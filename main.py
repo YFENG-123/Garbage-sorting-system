@@ -116,3 +116,15 @@ def shutdown():
 root.attributes("-fullscreen", True)
 root.bind("<Escape>", lambda d:shutdown())
 root.mainloop()
+
+print("程序结束")
+print("程序结束")
+
+
+print("程序结束")
+print("程序结束")
+print("程序结束")
+print("程序结束")
+
+print("程序结束")
+print("程序结束")
