@@ -1,3 +1,4 @@
+import time
 import tkinter as tk
 from PIL import Image, ImageTk  # 图像控件
 import cv2
@@ -17,7 +18,7 @@ static_image_container = None
 
 #载入模型
 print("载入模型...")
-ncnn_model = YOLO("yolo11n.pt")
+ncnn_model = YOLO("best_ncnn_model",task='segment')
 print("模型载入完毕")
 
 #启动摄像头（较费时），载入视频
@@ -68,13 +69,30 @@ def update_frame():
     else:
         ret, frame = camera.read()
         frame = cv2.flip(frame, 1) 
+        frame=cv2.resize(frame, (288, 288), interpolation=cv2.INTER_LINEAR)
+        
+        '''
         cvimage = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)    
         pilImage = Image.fromarray(cvimage)
         pilImage = pilImage.resize(( image_width, image_height), Image.LANCZOS)
-
         static_image_container = ImageTk.PhotoImage(image=pilImage)
-        results = ncnn_model(frame)
-        print(results)
+        '''
+        results = ncnn_model(frame,imgsz=320,save=True)
+        for i, r in enumerate(results):
+            # Plot results image
+            im_bgr = r.plot()  # BGR-order numpy array
+            im_rgb = Image.fromarray(im_bgr[..., ::-1])  # RGB-order PIL image
+
+            pilImage = im_rgb.resize(( image_width, image_height), Image.LANCZOS)
+            static_image_container = ImageTk.PhotoImage(image=pilImage)
+
+            
+        
+        
+
+        
+
+        #print(results)
         text_message
         canvas.create_image(0, 0, anchor='nw', image=static_image_container)
     root.after(10, update_frame)  # 每10毫秒更新一次图像
