@@ -18,7 +18,7 @@ static_image_container = None
 
 #载入模型
 print("载入模型...")
-ncnn_model = YOLO("model/best_ncnn_model",task='segment')
+ncnn_model = YOLO("model/yolo11n_det_480_ncnn_model",task='detect')
 print("模型载入完毕")
 
 #启动摄像头（较费时），载入视频
@@ -66,16 +66,25 @@ def update_frame():
 
         static_image_container = ImageTk.PhotoImage(image=pilImage)
     else:
-        ret, frame = camera.read() # cv读取摄像头
-        frame = cv2.flip(frame, 1)  # 反转图像
-        frame=cv2.resize(frame, (288, 288), interpolation=cv2.INTER_LINEAR) # 调整图像尺寸
-        results = ncnn_model(frame,imgsz=320,save=True) # 模型推理
-        im_bgr = results[0].plot()  # 绘制预测结果
-        im_rgb = Image.fromarray(im_bgr[..., ::-1])  # 转成PIL格式
-        pilImage = im_rgb.resize(( image_width, image_height), Image.LANCZOS)  # 调整图像尺寸以适应tkinter窗口
-        static_image_container = ImageTk.PhotoImage(image=pilImage) # 将图像转换为tkinter格式，并存入静态变量中
+        ret, frame = camera.read()# cv读取摄像头
+        frame = cv2.flip(frame, 1) # 反转图像
+        results = ncnn_model.predict(
+                    source=frame,imgsz=352,device="cpu",iou=0.5,
+                    conf=0.25,max_det=3
+                    )# 模型推理
+        '''
+        results = ncnn_model.track(
+            source=frame,imgsz=480,device="cpu",iou=0.5,
+            conf=0.25,max_det=1,persist=True,tracker="bytetrack.yaml"
+            )
+        '''
+        annotated_frame = results[0].plot()# 绘制预测结果
+        cvimage = cv2.cvtColor(annotated_frame, cv2.COLOR_BGR2RGB) 
+        pilImage = Image.fromarray(cvimage)
+        pilImage = pilImage.resize(( image_width, image_height), Image.LANCZOS)# 调整图像尺寸以适应tkinter窗口
+        static_image_container = ImageTk.PhotoImage(image=pilImage)# 将图像转换为tkinter格式，并存入静态变量中
     canvas.create_image(0, 0, anchor='nw', image=static_image_container) # 显示图像
-    root.after(50, update_frame)  # 每10毫秒更新一次图像
+    root.after(100, update_frame)  # 每10毫秒更新一次图像
 update_frame() # 启动更新函数
 
 
