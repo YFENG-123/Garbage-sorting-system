@@ -8,13 +8,7 @@
   - Operator System : Raspberry Pi OS(64-bit)
   - Virtual Environment : Miniconda3 24.7.1
   - Python : 3.11.10
-    - Packages :
-      - opencv-python : 4.10.0.84
-      - pillow : 11.0.0
-      - gpiozero : 2.0.1
-      - rpi.gpio : 0.7.1
-      - pigpio :1.78
-      - lgpio : 0.2.2.0
+  - Model: Yolov11n
 - Other :
   - RealVNC Viewer(Upper PC)
   - Raspberry Pi Imager(Upper PC)
@@ -47,7 +41,7 @@
       
   3. 首先执行以下命令进入系统配置界面, 选择  `6 Advanced Options` - `A6 Wayland` - `W1 X11` 开启X11服务(重启后生效,暂时先不重启)
      ```
-       sudo raspi-config
+      sudo raspi-config
      ``` 
      
   4. 返回终端执行
@@ -86,6 +80,7 @@
         4. 在菜单栏中选择 `Prefrences` -> `Raspberry Pi Configuration` 在 `Interface` 中开启 `VNC` 远程桌面, 在 `Localisation` 中 `Set Locate` 将 `Language` 改为 `zh(Chinese)` , `Character Set` 改为 `UTF-8` 后确认重启
 
   - #### 后续编写程序使用 VSCode Remote SSH 插件编写, 测试程序在 VNC 远程桌面中进行
+  - #### 若手机的 5G hz WIFI无法检测到，可以尝试更换地区为中国后重启尝试
    
 ### 3. 配置虚拟环境:
    1. 安装 Miniconda3:

@@ -11,3 +11,7 @@ curl -sSL https://resource.fit2cloud.com/1panel/package/quick_start.sh -o quick_
 pip freeze > requirements.txt
 
 pip install -r requirements.txt
+
+pip install -r requirements.txt -i https://pypi.tuna.tsinghua.edu.cn/simple
+
+pip install -r test_requirements.txt -i https://pypi.tuna.tsinghua.edu.cn/simple
