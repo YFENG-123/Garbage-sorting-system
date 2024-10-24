@@ -1,8 +1,8 @@
 import time
+import gpiozero
 import tkinter as tk
 from PIL import Image, ImageTk  # 图像控件
 import cv2
-import gpiozero
 from ultralytics import YOLO
 
 
@@ -18,7 +18,7 @@ static_image_container = None
 
 #载入模型
 print("载入模型...")
-ncnn_model = YOLO("model/yolo11n_det_480_ncnn_model",task='detect')
+ncnn_model = YOLO("model/yolo11n_det_320_ncnn_model",task='detect')
 print("模型载入完毕")
 
 #启动摄像头（较费时），载入视频
@@ -60,16 +60,11 @@ def update_frame():
     global static_image_container
     if mode == "Standby":
         ret, frame = video.read()
-        cvimage = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)    
-        pilImage = Image.fromarray(cvimage)
-        pilImage = pilImage.resize(( image_width, image_height), Image.LANCZOS)
-
-        static_image_container = ImageTk.PhotoImage(image=pilImage)
     else:
         ret, frame = camera.read()# cv读取摄像头
         frame = cv2.flip(frame, 1) # 反转图像
         results = ncnn_model.predict(
-                    source=frame,imgsz=352,device="cpu",iou=0.5,
+                    source=frame,imgsz=320,device="cpu",iou=0.5,
                     conf=0.25,max_det=3
                     )# 模型推理
         '''
@@ -79,12 +74,12 @@ def update_frame():
             )
         '''
         annotated_frame = results[0].plot()# 绘制预测结果
-        cvimage = cv2.cvtColor(annotated_frame, cv2.COLOR_BGR2RGB) 
-        pilImage = Image.fromarray(cvimage)
-        pilImage = pilImage.resize(( image_width, image_height), Image.LANCZOS)# 调整图像尺寸以适应tkinter窗口
-        static_image_container = ImageTk.PhotoImage(image=pilImage)# 将图像转换为tkinter格式，并存入静态变量中
+    cvimage = cv2.cvtColor(annotated_frame, cv2.COLOR_BGR2RGB) 
+    pilImage = Image.fromarray(cvimage)
+    pilImage = pilImage.resize(( image_width, image_height), Image.LANCZOS)# 调整图像尺寸以适应tkinter窗口
+    static_image_container = ImageTk.PhotoImage(image=pilImage)# 将图像转换为tkinter格式，并存入静态变量中
     canvas.create_image(0, 0, anchor='nw', image=static_image_container) # 显示图像
-    root.after(100, update_frame)  # 每10毫秒更新一次图像
+    root.after(1, update_frame)  # 每10毫秒更新一次图像
 update_frame() # 启动更新函数
 
 
