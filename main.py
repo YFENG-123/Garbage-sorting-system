@@ -18,7 +18,7 @@ static_image_container = None
 
 #载入模型
 print("载入模型...")
-ncnn_model = YOLO("best_ncnn_model",task='segment')
+ncnn_model = YOLO("yolo11n_det_480_ncnn_model",task='detect')
 print("模型载入完毕")
 
 #启动摄像头（较费时），载入视频
@@ -69,7 +69,7 @@ def update_frame():
     else:
         ret, frame = camera.read()
         frame = cv2.flip(frame, 1) 
-        frame=cv2.resize(frame, (288, 288), interpolation=cv2.INTER_LINEAR)
+        # frame=cv2.resize(frame, (320, 320), interpolation=cv2.INTER_LINEAR)
         
         '''
         cvimage = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)    
@@ -77,14 +77,26 @@ def update_frame():
         pilImage = pilImage.resize(( image_width, image_height), Image.LANCZOS)
         static_image_container = ImageTk.PhotoImage(image=pilImage)
         '''
-        results = ncnn_model(frame,imgsz=320,save=True)
-        for i, r in enumerate(results):
-            # Plot results image
-            im_bgr = r.plot()  # BGR-order numpy array
-            im_rgb = Image.fromarray(im_bgr[..., ::-1])  # RGB-order PIL image
-
-            pilImage = im_rgb.resize(( image_width, image_height), Image.LANCZOS)
-            static_image_container = ImageTk.PhotoImage(image=pilImage)
+        results = ncnn_model.predict(
+                    source=frame,imgsz=352,device="cpu",iou=0.5,
+                    conf=0.25,max_det=3
+                    )
+        '''
+        results = ncnn_model.track(
+            source=frame,imgsz=480,device="cpu",iou=0.5,
+            conf=0.25,max_det=1,persist=True,tracker="bytetrack.yaml"
+            )
+        '''
+        
+        # for i, r in enumerate(results):
+        #     # Plot results image
+        #     im_bgr = r.plot()  # BGR-order numpy array
+        #     im_rgb = Image.fromarray(im_bgr[..., ::-1])  # RGB-order PIL image
+        annotated_frame = results[0].plot()
+        cvimage = cv2.cvtColor(annotated_frame, cv2.COLOR_BGR2RGB) 
+        pilImage = Image.fromarray(cvimage)
+        pilImage = pilImage.resize(( image_width, image_height), Image.LANCZOS)
+        static_image_container = ImageTk.PhotoImage(image=pilImage)
 
             
         
