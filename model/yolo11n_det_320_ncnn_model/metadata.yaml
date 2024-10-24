@@ -1,6 +1,6 @@
 description: Ultralytics YOLO11n model trained on ./datasets\Dataset_yolo_det_split\dataset_waste.yaml
 author: Ultralytics
-date: '2024-10-24T14:38:02.916190'
+date: '2024-10-24T12:05:48.989384'
 version: 8.3.19
 license: AGPL-3.0 License (https://ultralytics.com/license)
 docs: https://docs.ultralytics.com

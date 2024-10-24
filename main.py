@@ -1,8 +1,8 @@
 import time
-import gpiozero
 import tkinter as tk
 from PIL import Image, ImageTk  # 图像控件
 import cv2
+import gpiozero
 from ultralytics import YOLO
 
 
@@ -60,7 +60,13 @@ def update_frame():
     global static_image_container
     if mode == "Standby":
         ret, frame = video.read()
+        cvimage = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)    
+        pilImage = Image.fromarray(cvimage)
+        pilImage = pilImage.resize(( image_width, image_height), Image.LANCZOS)
+
+        static_image_container = ImageTk.PhotoImage(image=pilImage)
     else:
+        loop_start = cv2.getTickCount()
         ret, frame = camera.read()# cv读取摄像头
         frame = cv2.flip(frame, 1) # 反转图像
         results = ncnn_model.predict(
@@ -74,12 +80,29 @@ def update_frame():
             )
         '''
         annotated_frame = results[0].plot()# 绘制预测结果
-    cvimage = cv2.cvtColor(annotated_frame, cv2.COLOR_BGR2RGB) 
-    pilImage = Image.fromarray(cvimage)
-    pilImage = pilImage.resize(( image_width, image_height), Image.LANCZOS)# 调整图像尺寸以适应tkinter窗口
-    static_image_container = ImageTk.PhotoImage(image=pilImage)# 将图像转换为tkinter格式，并存入静态变量中
+
+        # 计算FPS
+        loop_end = cv2.getTickCount()
+        loop_time = loop_end - loop_start
+        total_time = loop_time / (cv2.getTickFrequency())
+        FPS = int(1 / total_time)
+        
+        # 在图像左上角添加FPS文本
+        fps_text = f"FPS: {FPS:.2f}"
+        font = cv2.FONT_HERSHEY_SIMPLEX
+        font_scale = 1
+        font_thickness = 2
+        text_color = (0, 255, 0)  # 绿色
+        text_position = (10, 30)  # 左上角位置
+        cv2.putText(annotated_frame, fps_text, text_position, font, font_scale, text_color, font_thickness)
+
+        
+        cvimage = cv2.cvtColor(annotated_frame, cv2.COLOR_BGR2RGB) 
+        pilImage = Image.fromarray(cvimage)
+        pilImage = pilImage.resize(( image_width, image_height), Image.LANCZOS)# 调整图像尺寸以适应tkinter窗口
+        static_image_container = ImageTk.PhotoImage(image=pilImage)# 将图像转换为tkinter格式，并存入静态变量中
     canvas.create_image(0, 0, anchor='nw', image=static_image_container) # 显示图像
-    root.after(1, update_frame)  # 每10毫秒更新一次图像
+    root.after(1, update_frame)  # 每100毫秒更新一次图像
 update_frame() # 启动更新函数
 
 
