@@ -1,10 +1,11 @@
+import os
 import time
+import gpiozero
 import tkinter as tk
 from PIL import Image, ImageTk  # 图像控件
 import cv2
-import gpiozero
 from ultralytics import YOLO
-
+from model_pt.export import load_model
 
 #模式
 mode = None
@@ -21,6 +22,8 @@ image_height = 400
 
 #静态图片防止闪烁
 static_image_container = None
+
+
 
 #载入模型
 print("载入模型...")
@@ -90,11 +93,6 @@ def update_frame():
 
     if mode == "Standby":
         ret, frame = video.read()
-        cvimage = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)    
-        pilImage = Image.fromarray(cvimage)
-        pilImage = pilImage.resize(( image_width, image_height), Image.LANCZOS)
-
-        static_image_container = ImageTk.PhotoImage(image=pilImage)
     else:
         loop_start = cv2.getTickCount()
         
@@ -147,7 +145,6 @@ def update_frame():
     canvas.create_image(0, 0, anchor='nw', image=static_image_container) # 显示图像
     root.after(1, update_frame)  # 每100毫秒更新一次图像
 update_frame() # 启动更新函数
-
 
 
 def shutdown():
