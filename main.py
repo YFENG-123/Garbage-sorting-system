@@ -1,10 +1,11 @@
+import os
 import time
 import gpiozero
 import tkinter as tk
 from PIL import Image, ImageTk  # 图像控件
 import cv2
 from ultralytics import YOLO
-
+from model_pt.export import load_model
 
 #模式
 mode = None
@@ -16,9 +17,11 @@ image_height = 400
 #静态图片防止闪烁
 static_image_container = None
 
+
+
 #载入模型
 print("载入模型...")
-ncnn_model = YOLO("model/yolo11n_det_320_ncnn_model",task='detect')
+ncnn_model = load_model(320)
 print("模型载入完毕")
 
 #启动摄像头（较费时），载入视频
@@ -97,7 +100,6 @@ def update_frame():
     canvas.create_image(0, 0, anchor='nw', image=static_image_container) # 显示图像
     root.after(1, update_frame)  # 每100毫秒更新一次图像
 update_frame() # 启动更新函数
-
 
 
 def shutdown():
