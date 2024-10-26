@@ -1,11 +1,9 @@
-import os
 import time
 import gpiozero
 import tkinter as tk
 from PIL import Image, ImageTk  # 图像控件
 import cv2
 from ultralytics import YOLO
-from model_pt.export import load_model
 
 #模式
 mode = None
@@ -64,7 +62,7 @@ show_message_frame.grid(row=1, column=1,sticky='news')
 show_message = tk.StringVar()
 show_message.set("ex:1类垃圾 旧电池 x1 回收成功")
 '''
-show_message = "你好".encode("utf-8")
+show_message = "你好"
 font = ("Arial",12)
 
 text_message = tk.Label(
@@ -118,9 +116,6 @@ def update_frame():
             conf=0.25,max_det=1,persist=True,tracker="bytetrack.yaml"
             )#模型推理(跟踪)
         '''
-        # annotated_frame = results[0].plot()# 绘制预测结果
-
-        
 
         # 计算FPS
         loop_end = cv2.getTickCount()
