@@ -26,7 +26,7 @@ static_image_container = None
 #载入模型
 print("载入模型...")
 cls_ncnn_model = YOLO("model/yolo11n_cls_224_ncnn_model",task='classify')
-det_ncnn_model = YOLO("model/yolo11n_ncnn_model",task='detect')
+det_ncnn_model = YOLO("model/yolo11n_det_320_ncnn_model",task='detect')
 print("模型载入完毕")
 
 #启动摄像头（较费时），载入视频
@@ -66,7 +66,7 @@ show_message = "你好"
 font = ("Arial",12)
 
 text_message = tk.Label(
-    show_message_frame,textvariable=show_message.decode("utf-8"),
+    show_message_frame,textvariable=show_message,
     background="white", font=font,
     height=10,width=110
     )
@@ -78,6 +78,8 @@ def update_frame():
     global model_flag
     global model_count
 
+    loop_start = cv2.getTickCount()
+
     if model_count <= 0:
         model_flag = 1^model_flag # 切换模型
         print(model_flag)
@@ -88,15 +90,12 @@ def update_frame():
     else:
         model_count = model_count - 1
 
-
     if mode == "Standby":
         ret, frame = video.read()
+        annotated_frame = frame
     else:
-        loop_start = cv2.getTickCount()
-        
-        ret, frame = camera.read()# cv读取摄像头
+        ret, frame = camera.read() # cv读取摄像头
         frame = cv2.flip(frame, 1) # 反转图像
-        annotated_frame = None
         
         if model_flag == 1:
             results = det_ncnn_model.predict(
@@ -117,20 +116,20 @@ def update_frame():
             )#模型推理(跟踪)
         '''
 
-        # 计算FPS
-        loop_end = cv2.getTickCount()
-        loop_time = loop_end - loop_start
-        total_time = loop_time / (cv2.getTickFrequency())
-        FPS = int(1 / total_time)
-        
-        # 在图像左上角添加FPS文本
-        fps_text = f"FPS: {FPS:.2f}"
-        font = cv2.FONT_HERSHEY_SIMPLEX
-        font_scale = 1
-        font_thickness = 2
-        text_color = (0, 255, 0)  # 绿色
-        text_position = (10, 30)  # 左上角位置
-        cv2.putText(annotated_frame, fps_text, text_position, font, font_scale, text_color, font_thickness)
+    # 计算FPS
+    loop_end = cv2.getTickCount()
+    loop_time = loop_end - loop_start
+    total_time = loop_time / (cv2.getTickFrequency())
+    FPS = int(1 / total_time)
+    
+    # 在图像左上角添加FPS文本
+    fps_text = f"FPS: {FPS:.2f}"
+    font = cv2.FONT_HERSHEY_SIMPLEX
+    font_scale = 1
+    font_thickness = 2
+    text_color = (0, 255, 0)  # 绿色
+    text_position = (10, 30)  # 左上角位置
+    cv2.putText(annotated_frame, fps_text, text_position, font, font_scale, text_color, font_thickness)
 
         
     cvimage = cv2.cvtColor(annotated_frame, cv2.COLOR_BGR2RGB) 
