@@ -10,8 +10,14 @@ from model_pt.export import load_model
 #模式
 mode = None
 
+#模型标志
+model_flag = 0
+
+#推理次数
+model_count = 10
+
 #摄像头图片参数
-image_width = 800
+image_width = 400
 image_height = 400
 
 #静态图片防止闪烁
@@ -21,7 +27,8 @@ static_image_container = None
 
 #载入模型
 print("载入模型...")
-ncnn_model = load_model(320)
+cls_ncnn_model = YOLO("model/yolo11n_cls_224_ncnn_model",task='classify')
+det_ncnn_model = YOLO("model/yolo11n_ncnn_model",task='detect')
 print("模型载入完毕")
 
 #启动摄像头（较费时），载入视频
@@ -53,31 +60,67 @@ canvas.grid()
 # 文本框
 show_message_frame = tk.Frame(root,bg='green')
 show_message_frame.grid(row=1, column=1,sticky='news')
+'''
 show_message = tk.StringVar()
 show_message.set("ex:1类垃圾 旧电池 x1 回收成功")
-text_message = tk.Label(show_message_frame,textvariable=show_message,background="white", font=("Arial", 10),height=10,width=110)
+'''
+show_message = "你好".encode("utf-8")
+font = ("Arial",12)
+
+text_message = tk.Label(
+    show_message_frame,textvariable=show_message.decode("utf-8"),
+    background="white", font=font,
+    height=10,width=110
+    )
 text_message.grid()
 
 #定时刷新
 def update_frame():
     global static_image_container
+    global model_flag
+    global model_count
+
+    if model_count <= 0:
+        model_flag = 1^model_flag # 切换模型
+        print(model_flag)
+        if model_flag == 0:
+            model_count = 30
+        else:
+            model_count = 0
+    else:
+        model_count = model_count - 1
+
+
     if mode == "Standby":
         ret, frame = video.read()
     else:
         loop_start = cv2.getTickCount()
+        
         ret, frame = camera.read()# cv读取摄像头
         frame = cv2.flip(frame, 1) # 反转图像
-        results = ncnn_model.predict(
-                    source=frame,imgsz=320,device="cpu",iou=0.5,
+        annotated_frame = None
+        
+        if model_flag == 1:
+            results = det_ncnn_model.predict(
+                    source=frame,imgsz=640,device="cpu",iou=0.5,
                     conf=0.25,max_det=3
-                    )# 模型推理
+                    )# 模型推理(预测)
+            annotated_frame = results[0].plot()# 绘制预测结果
+        else:
+            results = cls_ncnn_model.predict(
+                    source=frame,imgsz=224,device="cpu",iou=0.5,
+                    conf=0.25,max_det=3
+                    )# 模型推理(预测)
+            annotated_frame = frame
         '''
         results = ncnn_model.track(
             source=frame,imgsz=480,device="cpu",iou=0.5,
             conf=0.25,max_det=1,persist=True,tracker="bytetrack.yaml"
-            )
+            )#模型推理(跟踪)
         '''
-        frame = results[0].plot()# 绘制预测结果
+        # annotated_frame = results[0].plot()# 绘制预测结果
+
+        
 
         # 计算FPS
         loop_end = cv2.getTickCount()
@@ -92,8 +135,10 @@ def update_frame():
         font_thickness = 2
         text_color = (0, 255, 0)  # 绿色
         text_position = (10, 30)  # 左上角位置
-        cv2.putText(frame, fps_text, text_position, font, font_scale, text_color, font_thickness)
-    cvimage = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB) 
+        cv2.putText(annotated_frame, fps_text, text_position, font, font_scale, text_color, font_thickness)
+
+        
+    cvimage = cv2.cvtColor(annotated_frame, cv2.COLOR_BGR2RGB) 
     pilImage = Image.fromarray(cvimage)
     pilImage = pilImage.resize(( image_width, image_height), Image.LANCZOS)# 调整图像尺寸以适应tkinter窗口
     static_image_container = ImageTk.PhotoImage(image=pilImage)# 将图像转换为tkinter格式，并存入静态变量中
