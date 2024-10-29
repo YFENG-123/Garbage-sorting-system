@@ -10,15 +10,15 @@ servo = Servo(myGPIO, min_pulse_width=minPW, max_pulse_width=maxPW)
 
 def set_servo_angle(value):
     if value ==0 :
-    servo.value = -1 # 对应0°
+        servo.value = -1 # 对应0°
     elif value == 90:
-    servo.value = -0.5 # 对应90°（根据舵机及实验调整具体值）
+        servo.value = -0.5 # 对应90°（根据舵机及实验调整具体值）
     elif value == 180:
-    servo.value =0 # 对应180°
+        servo.value =0 # 对应180°
     elif value == -90:
-    servo.value =0.5 # 对应-90°（需调节具体值）
+        servo.value =0.5 # 对应-90°（需调节具体值）
     elif value == -180:
-    servo.value =0.8 # 对应-180°（需调节具体值）
+        servo.value =0.8 # 对应-180°（需调节具体值）
     sleep(1) #允许舵机有时间达到目标位置
     
     
