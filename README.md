@@ -96,17 +96,23 @@
       pip install -r requirements.txt
       ```
 ### 4.电控-GPIO
-   #### 1.GPIO_Gimbal
-      调控云台使用gpiozero库的GPIO延时（转动角度较小且抖动很大）或者使用RPI.GPIO库写的四自由度云台控制双舵机
-      1.使用gpiozero库
-         设置校正值，将servo.value映射到一定范围调试代码，具体请看GPIO_Gimbal.py文件.
 
-      2.使用RPI.GPIO库
-         1.封装好了up(),down(),left(),right(),方便调用.
-         2.转动角度封装在列表内，方便debug.
-         3.针对gpiozero中出现的抖动，进行了消抖操作。舵机会发生抖动是因为精度原因，它自己认为还没有达到要求的角度，所以会不断的左右纠正，最终产生抖动，所以当舵机转到指定的角度后，sleep极短时间，就将当前的占空比清零，从而进行消抖.
+#### 1.GPIO_Gimbal
+
+ 使用gpiozero库的GPIO延时控制云台或者使用RPI.GPIO库写的四自由度云台控制
+
+-   使用gpiozero库
+	- 设置校正值，将servo.value映射到一定范围调试代码，具体请看GPIO_Gimbal.py文件.
+	- 抖动大，转动角度较小,响应较慢
+
+-   使用RPI.GPIO库
+	-   封装好了up(),down(),left(),right(),方便调用.  
+	- 转动角度封装在列表内，方便debug.    
+	- 针对gpiozero中出现的抖动，进行了消抖操作。舵机会发生抖动是因为精度原因，它自己认为还没有达到要求的角度，所以会不断的左右纠正，最终产生抖动，所以当舵机转到指定的角度后，sleep极短时间，就将当前的占空比清零，从而进行消抖.
+
+
 
    #### 2.GPIO_Track
-      
+
 
    #### 3.GPIO_Compressor
