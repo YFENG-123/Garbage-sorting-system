@@ -1,5 +1,3 @@
-import time
-import gpiozero
 import tkinter as tk
 from PIL import Image, ImageTk  # 图像控件
 import cv2
@@ -79,7 +77,8 @@ def update_frame():
     global model_count
 
     loop_start = cv2.getTickCount()
-
+    
+    # 更新状态
     if model_count <= 0:
         model_flag = 1^model_flag # 切换模型
         print(model_flag)
@@ -90,6 +89,7 @@ def update_frame():
     else:
         model_count = model_count - 1
 
+    # 获取摄像头或视频帧
     if mode == "Standby":
         ret, frame = video.read()
         annotated_frame = frame
@@ -131,7 +131,7 @@ def update_frame():
     text_position = (10, 30)  # 左上角位置
     cv2.putText(annotated_frame, fps_text, text_position, font, font_scale, text_color, font_thickness)
 
-        
+    # 转换格式并显示
     cvimage = cv2.cvtColor(annotated_frame, cv2.COLOR_BGR2RGB) 
     pilImage = Image.fromarray(cvimage)
     pilImage = pilImage.resize(( image_width, image_height), Image.LANCZOS)# 调整图像尺寸以适应tkinter窗口
