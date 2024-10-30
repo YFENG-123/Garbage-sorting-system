@@ -26,7 +26,7 @@ static_image_container = None
 #载入模型
 print("载入模型...")
 cls_ncnn_model = YOLO("model/yolo11n_cls_224_ncnn_model",task='classify')
-det_ncnn_model = YOLO("model/yolo11n_ncnn_model",task='detect')
+det_ncnn_model = YOLO("model\yolo11n_det_320_ncnn_model",task='detect')
 print("模型载入完毕")
 
 #启动摄像头（较费时），载入视频
@@ -50,7 +50,7 @@ for item in list_messages:
 listbox.grid()
 
 # 视频框
-vedio_frame = tk.Frame(root,bg='green')
+vedio_frame = tk.Frame(root,bg='blue')
 vedio_frame.grid(row=0, column=1,sticky='news')
 canvas = tk.Canvas(vedio_frame, bg='white',height=image_height,width=image_width)
 canvas.grid()
@@ -58,15 +58,14 @@ canvas.grid()
 # 文本框
 show_message_frame = tk.Frame(root,bg='green')
 show_message_frame.grid(row=1, column=1,sticky='news')
-'''
+
 show_message = tk.StringVar()
 show_message.set("ex:1类垃圾 旧电池 x1 回收成功")
-'''
-show_message = "你好"
+ 
 font = ("Arial",12)
 
 text_message = tk.Label(
-    show_message_frame,textvariable=show_message.decode("utf-8"),
+    show_message_frame,textvariable=show_message,
     background="white", font=font,
     height=10,width=110
     )
@@ -100,7 +99,7 @@ def update_frame():
         
         if model_flag == 1:
             results = det_ncnn_model.predict(
-                    source=frame,imgsz=640,device="cpu",iou=0.5,
+                    source=frame,imgsz=320,device="cpu",iou=0.5,
                     conf=0.25,max_det=3
                     )# 模型推理(预测)
             annotated_frame = results[0].plot()# 绘制预测结果
