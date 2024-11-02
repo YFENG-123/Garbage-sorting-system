@@ -18,8 +18,9 @@ model_flag = 0
 model_count = 10
 
 #摄像头图片参数
-image_width = 1600
-image_height = 900
+p_w_h = 16/9
+image_width = 2000
+image_height = int(image_width/p_w_h)
 
 #静态图片防止闪烁
 static_image_container = None
@@ -42,7 +43,7 @@ font = ("Arial",12)
 
 # 创建窗口
 root = ttk.Window()
-style = ttk.Style("superhero")
+style = ttk.Style("litera")
 style.configure('TLabelframe.Label', font=font)
 # style = ttk.Style("darkly")
 
@@ -77,7 +78,7 @@ dt = Tableview(
     searchable=False,
     bootstyle=PRIMARY,
     stripecolor=(colors.light, None),
-    height=50,
+    height=60,
 )
 dt.grid()
 # listbox = tk.Listbox(list_frame, height=75, width=50)
@@ -108,23 +109,35 @@ text_message.grid()
 progress_frame = ttk.LabelFrame(root,text='投放累计',bootstyle="warning")
 progress_frame.grid(row=2, column=1,columnspan=2,sticky='news',padx=1,pady=1)
 
-label_food_waste = ttk.Label(progress_frame,text='   厨余垃圾',bootstyle="inverse-success")
-label_food_waste.grid(row=0,column=0)
-label_recyclable_waste = ttk.Label(progress_frame,text='可回收垃圾',bootstyle="inverse-primary")
-label_recyclable_waste.grid(row=1,column=0)
-label_other_waste = ttk.Label(progress_frame,text='   其他垃圾',bootstyle="inverse-secondary")
-label_other_waste.grid(row=2,column=0)
-label_hazardous_waste = ttk.Label(progress_frame,text='   有害垃圾',bootstyle="inverse-danger")
-label_hazardous_waste.grid(row=3,column=0)
+# 各类垃圾标签
+labelframe_food_waste = ttk.Labelframe(progress_frame,text='厨余垃圾',bootstyle="success")
+labelframe_food_waste.grid(row=0,column=0,padx=5,pady=5,ipadx=2,ipady=2)
+labelframe_recyclable_waste = ttk.Labelframe(progress_frame,text='可回收垃圾',bootstyle="primary")
+labelframe_recyclable_waste.grid(row=1,column=0,padx=5,pady=5,ipadx=2,ipady=2)
+labelframe_other_waste = ttk.Labelframe(progress_frame,text='其他垃圾',bootstyle="secondary")
+labelframe_other_waste.grid(row=2,column=0,padx=5,pady=5,ipadx=2,ipady=2)
+labelframe_hazardous_waste = ttk.Labelframe(progress_frame,text='有害垃圾',bootstyle="danger")
+labelframe_hazardous_waste.grid(row=3,column=0,padx=5,pady=5,ipadx=2,ipady=2)
 
-progress_food_waste = ttk.Progressbar(progress_frame,value=50,bootstyle="success",length=300)
-progress_food_waste.grid(row=0,column=1)
-progress_recyclable_waste = ttk.Progressbar(progress_frame,value=50,bootstyle="primary",length=300)
-progress_recyclable_waste.grid(row=1,column=1)
-progress_other_waste = ttk.Progressbar(progress_frame,value=50,bootstyle="secondary",length=300)
-progress_other_waste.grid(row=2,column=1)
-progress_hazardous_waste = ttk.Progressbar(progress_frame,value=50,bootstyle="danger",length=300)
-progress_hazardous_waste.grid(row=3,column=1)
+# 各类垃圾投放进度条
+progress_food_waste = ttk.Progressbar(labelframe_food_waste,value=50,bootstyle="success",length=1400)
+progress_food_waste.grid()
+progress_recyclable_waste = ttk.Progressbar(labelframe_recyclable_waste,value=50,bootstyle="primary",length=1400)
+progress_recyclable_waste.grid()
+progress_other_waste = ttk.Progressbar(labelframe_other_waste,value=50,bootstyle="secondary",length=1400)
+progress_other_waste.grid()
+progress_hazardous_waste = ttk.Progressbar(labelframe_hazardous_waste,value=50,bootstyle="danger",length=1400)
+progress_hazardous_waste.grid()
+
+# 各类垃圾投放进度条数值
+label_food_waste = ttk.Label(labelframe_food_waste,text='50',bootstyle="success")
+label_food_waste.grid(row=0,column=1)
+label_recyclable_waste = ttk.Label(labelframe_recyclable_waste,text='50',bootstyle="primary")
+label_recyclable_waste.grid(row=0,column=1)
+label_other_waste = ttk.Label(labelframe_other_waste,text='50',bootstyle="secondary")
+label_other_waste.grid(row=0,column=1)
+label_hazardous_waste = ttk.Label(labelframe_hazardous_waste,text='50',bootstyle="danger")
+label_hazardous_waste.grid(row=0,column=1)
 
 
 
@@ -194,7 +207,7 @@ def update_frame():
     pilImage = pilImage.resize(( image_width, image_height), Image.LANCZOS)# 调整图像尺寸以适应tkinter窗口
     static_image_container = ImageTk.PhotoImage(image=pilImage)# 将图像转换为tkinter格式，并存入静态变量中
     canvas.create_image(0, 0, anchor='nw', image=static_image_container) # 显示图像
-    root.after(1, update_frame)  # 每100毫秒更新一次图像
+    root.after(100, update_frame)  # 每100毫秒更新一次图像
 update_frame() # 启动更新函数
 
 
