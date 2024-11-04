@@ -47,7 +47,7 @@ class GUI:
         self.root = ttk.Window()
 
         # 设置风格字体
-        self.style = ttk.Style("superhero")
+        self.style = ttk.Style("litera")
         font = ("Arial",12)
         self.style.configure('TLabelframe.Label', font=font)
         self.style.configure('custom.primary.Treeview.Heading', font=('Arial', 15))  # 设置表头字体
@@ -55,10 +55,16 @@ class GUI:
 
         # 各类属性
         self.tableview_items_num = 15
-        self.progressbar_length = 300
+        self.progressbar_length = 1000
+        self.tableview_column_width = 200
         self.image_width = image_width
         self.image_height = image_height
 
+        # 读取各类垃圾图标
+        self.image_food_waste = ImageTk.PhotoImage(Image.open("gui_images/food_waste_logo.png").resize((100,100)))
+        self.image_recyclable_waste = ImageTk.PhotoImage(Image.open("gui_images/recyclable_waste_logo.png").resize((100,100)))
+        self.image_other_waste = ImageTk.PhotoImage(Image.open("gui_images/other_waste_logo.png").resize((100,100)))
+        self.image_hazardous_waste = ImageTk.PhotoImage(Image.open("gui_images/hazardous_waste_logo.png").resize((100,100)))
 
         # 界面编写
         self.interface()
@@ -81,12 +87,15 @@ class GUI:
         colors = self.root.style.colors
 
         coldata = [
-            {"text": "投放垃圾", "stretch": False,"width": 350},
-            {"text": "投放顺序", "stretch": False,"width": 350}
+            {"text": "序号", "stretch": False,"width": self.tableview_column_width},
+            {"text": "类别", "stretch": False,"width": self.tableview_column_width},
+            {"text": "数量", "stretch": False,"width": self.tableview_column_width},
+            {"text": "状态", "stretch": False,"width": self.tableview_column_width}
+            
         ]
 
         rowdata = [
-            ('其他垃圾',1),
+            ('其他垃圾',1,1,1),
             ('有害垃圾',2),
             ('其他垃圾',1),
             ('有害垃圾',2),
@@ -113,37 +122,62 @@ class GUI:
         '''投放统计框'''
         # 标签框
         self.labelframe_total = ttk.Labelframe(self.root, text="投放统计")
-        self.labelframe_total.grid(row=1, column=0,rowspan=1,padx=1,pady=1,ipadx=2,ipady=2,sticky='news')
+        self.labelframe_total.grid(row=1, column=1,rowspan=1,padx=1,pady=1,ipadx=2,ipady=2,sticky='news')
 
         # 各类垃圾标签框
         self.labelframe_food_waste = ttk.Labelframe(self.labelframe_total,text='厨余垃圾',bootstyle="success")
         self.labelframe_food_waste.grid(row=0,column=0,padx=5,pady=5,ipadx=2,ipady=2)
-        self.labelframe_recyclable_waste = ttk.Labelframe(self.labelframe_total,text='可回收垃圾',bootstyle="primary")
+        self.labelframe_recyclable_waste = ttk.Labelframe(self.labelframe_total,text='可回收物',bootstyle="primary")
         self.labelframe_recyclable_waste.grid(row=1,column=0,padx=5,pady=5,ipadx=2,ipady=2)
         self.labelframe_other_waste = ttk.Labelframe(self.labelframe_total,text='其他垃圾',bootstyle="secondary")
         self.labelframe_other_waste.grid(row=2,column=0,padx=5,pady=5,ipadx=2,ipady=2)
         self.labelframe_hazardous_waste = ttk.Labelframe(self.labelframe_total,text='有害垃圾',bootstyle="danger")
         self.labelframe_hazardous_waste.grid(row=3,column=0,padx=5,pady=5,ipadx=2,ipady=2)
 
+        # 各类垃圾图标
+
+        self.label_food_waste = ttk.Label(self.labelframe_food_waste,text="厨余垃圾",image=self.image_food_waste)
+        self.label_food_waste.grid(row=0,column=0)
+        self.label_recyclable_waste = ttk.Label(self.labelframe_recyclable_waste,image=self.image_recyclable_waste)
+        self.label_recyclable_waste.grid(row=0,column=0)
+        self.label_other_waste = ttk.Label(self.labelframe_other_waste,image=self.image_other_waste)
+        self.label_other_waste.grid(row=0,column=0)
+        self.label_hazardous_waste = ttk.Label(self.labelframe_hazardous_waste,image=self.image_hazardous_waste)
+        self.label_hazardous_waste.grid(row=0,column=0)
+
         # 各类垃圾投放统计进度条
         self.progressbar_food_waste = ttk.Progressbar(self.labelframe_food_waste,value=50,bootstyle="success",length=self.progressbar_length)
-        self.progressbar_food_waste.grid()
+        self.progressbar_food_waste.grid(row=0,column=1)
         self.progressbar_recyclable_waste = ttk.Progressbar(self.labelframe_recyclable_waste,value=50,bootstyle="primary",length=self.progressbar_length)
-        self.progressbar_recyclable_waste.grid()
+        self.progressbar_recyclable_waste.grid(row=0,column=1)
         self.progressbar_other_waste = ttk.Progressbar(self.labelframe_other_waste,value=50,bootstyle="secondary",length=self.progressbar_length)
-        self.progressbar_other_waste.grid()
+        self.progressbar_other_waste.grid(row=0,column=1)
         self.progressbar_hazardous_waste = ttk.Progressbar(self.labelframe_hazardous_waste,value=50,bootstyle="danger",length=self.progressbar_length)
-        self.progressbar_hazardous_waste.grid()
+        self.progressbar_hazardous_waste.grid(row=0,column=1)
 
         # 各类垃圾投放进度条数值
         self.label_food_waste = ttk.Label(self.labelframe_food_waste,text='50',bootstyle="success")
-        self.label_food_waste.grid(row=0,column=1)
+        self.label_food_waste.grid(row=0,column=2)
         self.label_recyclable_waste = ttk.Label(self.labelframe_recyclable_waste,text='50',bootstyle="primary")
-        self.label_recyclable_waste.grid(row=0,column=1)
+        self.label_recyclable_waste.grid(row=0,column=2)
         self.label_other_waste = ttk.Label(self.labelframe_other_waste,text='50',bootstyle="secondary")
-        self.label_other_waste.grid(row=0,column=1)
+        self.label_other_waste.grid(row=0,column=2)
         self.label_hazardous_waste = ttk.Label(self.labelframe_hazardous_waste,text='50',bootstyle="danger")
-        self.label_hazardous_waste.grid(row=0,column=1)
+        self.label_hazardous_waste.grid(row=0,column=2)
+
+        # 分隔线
+        self.separator_status = ttk.Separator(self.labelframe_total,bootstyle='info',orient=VERTICAL)
+        self.separator_status.grid(row=0, column=1,rowspan=4,sticky='news')
+
+        # 各类垃圾箱状态
+        self.button_food_waste_status = ttk.Button(self.labelframe_total,text='正常',bootstyle="success-outline",width=10)
+        self.button_food_waste_status.grid(row=0,column=2,padx=5,pady=20,ipadx=2,ipady=2,sticky='news')
+        self.button_recyclable_waste_status = ttk.Button(self.labelframe_total,text='正常',bootstyle="success-outline")
+        self.button_recyclable_waste_status.grid(row=1,column=2,padx=5,pady=20,ipadx=2,ipady=2,sticky='news')
+        self.button_other_waste_status = ttk.Button(self.labelframe_total,text='正常',bootstyle="success-outline")
+        self.button_other_waste_status.grid(row=2,column=2,padx=5,pady=20,ipadx=2,ipady=2,sticky='news')
+        self.button_hazardous_waste_status = ttk.Button(self.labelframe_total,text='正常',bootstyle="success-outline")
+        self.button_hazardous_waste_status.grid(row=3,column=2,padx=5,pady=20,ipadx=2,ipady=2,sticky='news')
 
     def create_video_frame(self):
         '''视频框'''
@@ -159,7 +193,7 @@ class GUI:
         self.meter_fps = ttk.Meter(
             master=self.labelframe_video,
             bootstyle='success',
-            metersize=240,
+            metersize=200,
             arcoffset=-210,
             arcrange=240,
             padding=5,
@@ -176,7 +210,7 @@ class GUI:
         self.meter_conf = ttk.Meter(
             master=self.labelframe_video,
             bootstyle='success',
-            metersize=240,
+            metersize=200,
             padding=5,
             amounttotal=100,
             amountused=95.5,
@@ -216,7 +250,7 @@ class GUI:
         '''状态框'''
         # 状态框
         self.labelframe_status = ttk.Labelframe(self.root, text="状态")
-        self.labelframe_status.grid(row=1, column=1,padx=1,pady=1,ipadx=2,ipady=2,sticky='news')
+        self.labelframe_status.grid(row=1, column=0,padx=1,pady=1,ipadx=2,ipady=2,sticky='news')
 
         self.label_status_camera = ttk.Label(self.labelframe_status,text='摄像头状态',font=('Arial', 30),bootstyle="success")
         self.label_status_camera.grid(row=0, column=0,padx=5,pady=5,ipadx=2,ipady=2,sticky='news')
@@ -231,6 +265,16 @@ class GUI:
         # 分隔线
         self.separator_status = ttk.Separator(self.labelframe_status,bootstyle='info',orient=VERTICAL)
         self.separator_status.grid(row=0, column=1,rowspan=4,sticky='news')
+
+        # 状态指示
+        self.button_camera_status = ttk.Button(self.labelframe_status,text='工作中',bootstyle='success-outline',width=16)
+        self.button_camera_status.grid(row=0, column=2,padx=5,pady=5,ipadx=2,ipady=2,sticky='news')
+        self.button_conveyor_status = ttk.Button(self.labelframe_status,text='工作中',bootstyle='success-outline')
+        self.button_conveyor_status.grid(row=1, column=2,padx=5,pady=5,ipadx=2,ipady=2,sticky='news')
+        self.button_detector_status = ttk.Button(self.labelframe_status,text='工作中',bootstyle='success-outline')
+        self.button_detector_status.grid(row=2, column=2,padx=5,pady=5,ipadx=2,ipady=2,sticky='news')
+        self.button_compactors_status = ttk.Button(self.labelframe_status,text='工作中',bootstyle='success-outline')
+        self.button_compactors_status.grid(row=3, column=2,padx=5,pady=5,ipadx=2,ipady=2,sticky='news')
 
     def create_system_frame(self):
         '''系统信息框'''
