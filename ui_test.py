@@ -1,5 +1,5 @@
 import time
-import gpiozero
+#import gpiozero
 from PIL import Image, ImageTk  # 图像控件
 Image.CUBIC = Image.BICUBIC # 显式修复ttk包bug
 import tkinter as tk
