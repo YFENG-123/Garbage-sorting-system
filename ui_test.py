@@ -19,8 +19,9 @@ model_flag = 0
 model_count = 10
 
 #摄像头图片参数
-image_width = 1920
-image_height = 1080
+image_multiple = 68
+image_width = 16*image_multiple
+image_height = 9*image_multiple
 
 #静态图片防止闪烁
 static_image_container = None
@@ -28,10 +29,10 @@ static_image_container = None
 
 
 # #载入模型
-# print("载入模型...")
-# cls_ncnn_model = YOLO("model/yolo11n_cls_224_ncnn_model",task='classify')
-# det_ncnn_model = YOLO("model\yolo11n_det_320_ncnn_model",task='detect')
-# print("模型载入完毕")
+print("载入模型...")
+cls_ncnn_model = YOLO("model/yolo11n_cls_224_ncnn_model",task='classify')
+det_ncnn_model = YOLO("model/yolo11n_det_320_ncnn_model",task='detect')
+print("模型载入完毕")
 
 #启动摄像头（较费时），载入视频
 print("启动摄像头...")
@@ -51,20 +52,22 @@ class GUI:
         font = ("Arial",12)
         self.style.configure('TLabelframe.Label', font=font)
         self.style.configure('custom.primary.Treeview.Heading', font=('Arial', 15))  # 设置表头字体
-        self.style.configure('custom.primary.Treeview',rowheight=80, font=('Arial', 15))
+        self.style.configure('custom.primary.Treeview',rowheight=42, font=('Arial', 15))
 
         # 各类属性
         self.tableview_items_num = 15
-        self.progressbar_length = 1000
-        self.tableview_column_width = 200
+        self.progressbar_length = 700
+        self.tableview_column_width = 138
         self.image_width = image_width
         self.image_height = image_height
+        self.metersize = 250
+        self.waste_logo_size = 45
 
         # 读取各类垃圾图标
-        self.image_food_waste = ImageTk.PhotoImage(Image.open("gui_images/food_waste_logo.png").resize((100,100)))
-        self.image_recyclable_waste = ImageTk.PhotoImage(Image.open("gui_images/recyclable_waste_logo.png").resize((100,100)))
-        self.image_other_waste = ImageTk.PhotoImage(Image.open("gui_images/other_waste_logo.png").resize((100,100)))
-        self.image_hazardous_waste = ImageTk.PhotoImage(Image.open("gui_images/hazardous_waste_logo.png").resize((100,100)))
+        self.image_food_waste = ImageTk.PhotoImage(Image.open("gui_images/food_waste_logo.png").resize((self.waste_logo_size,self.waste_logo_size)))
+        self.image_recyclable_waste = ImageTk.PhotoImage(Image.open("gui_images/recyclable_waste_logo.png").resize((self.waste_logo_size,self.waste_logo_size)))
+        self.image_other_waste = ImageTk.PhotoImage(Image.open("gui_images/other_waste_logo.png").resize((self.waste_logo_size,self.waste_logo_size)))
+        self.image_hazardous_waste = ImageTk.PhotoImage(Image.open("gui_images/hazardous_waste_logo.png").resize((self.waste_logo_size,self.waste_logo_size)))
 
         # 界面编写
         self.interface()
@@ -193,7 +196,7 @@ class GUI:
         self.meter_fps = ttk.Meter(
             master=self.labelframe_video,
             bootstyle='success',
-            metersize=200,
+            metersize=self.metersize,
             arcoffset=-210,
             arcrange=240,
             padding=5,
@@ -210,7 +213,7 @@ class GUI:
         self.meter_conf = ttk.Meter(
             master=self.labelframe_video,
             bootstyle='success',
-            metersize=200,
+            metersize=self.metersize,
             padding=5,
             amounttotal=100,
             amountused=95.5,
@@ -222,20 +225,20 @@ class GUI:
         self.meter_conf.grid(row=1, column=4,sticky='news')
 
         # 分类信息标签
-        self.label_order = ttk.Label(self.labelframe_video,text='投放顺序',font=('Arial', 30),bootstyle="success")
+        self.label_order = ttk.Label(self.labelframe_video,text='array',font=('Arial', 30),bootstyle="success")
         self.label_order.grid(row=2, column=0,padx=5,pady=5,ipadx=2,ipady=2)
-        self.label_class = ttk.Label(self.labelframe_video,text='垃圾类别',font=('Arial', 30),bootstyle="success")
+        self.label_class = ttk.Label(self.labelframe_video,text='classify',font=('Arial', 30),bootstyle="success")
         self.label_class.grid(row=2, column=1,padx=5,pady=5,ipadx=2,ipady=2)
-        self.label_num = ttk.Label(self.labelframe_video,text='投放数量',font=('Arial', 30),bootstyle="success")
+        self.label_num = ttk.Label(self.labelframe_video,text='number',font=('Arial', 30),bootstyle="success")
         self.label_num.grid(row=2, column=2,padx=5,pady=5,ipadx=2,ipady=2)
 
         # 分类状态框
         self.floodgauge_classify = ttk.Floodgauge(
             master=self.labelframe_video,
             bootstyle="success",
-            length=400,
+            length=200,
             font=("Arial", 30),
-            mask="分类完成",
+            mask="OK",
             mode="determinate",
             )
         self.floodgauge_classify.grid(row=2, column=3,padx=5,pady=5,ipadx=2,ipady=2)
@@ -252,13 +255,13 @@ class GUI:
         self.labelframe_status = ttk.Labelframe(self.root, text="状态")
         self.labelframe_status.grid(row=1, column=0,padx=1,pady=1,ipadx=2,ipady=2,sticky='news')
 
-        self.label_status_camera = ttk.Label(self.labelframe_status,text='摄像头状态',font=('Arial', 30),bootstyle="success")
+        self.label_status_camera = ttk.Label(self.labelframe_status,text='camera',font=('Arial', 30),bootstyle="success")
         self.label_status_camera.grid(row=0, column=0,padx=5,pady=5,ipadx=2,ipady=2,sticky='news')
-        self.label_status_conveyor = ttk.Label(self.labelframe_status,text='传送带状态',font=('Arial', 30),bootstyle="success")
+        self.label_status_conveyor = ttk.Label(self.labelframe_status,text='conveyor',font=('Arial', 30),bootstyle="success")
         self.label_status_conveyor.grid(row=1, column=0,padx=5,pady=5,ipadx=2,ipady=2,sticky='news')
-        self.label_status_detector = ttk.Label(self.labelframe_status,text='检测器状态',font=('Arial', 30),bootstyle="success")
+        self.label_status_detector = ttk.Label(self.labelframe_status,text='detector',font=('Arial', 30),bootstyle="success")
         self.label_status_detector.grid(row=2, column=0,padx=5,pady=5,ipadx=2,ipady=2,sticky='news')
-        self.label_status_compactors = ttk.Label(self.labelframe_status,text='压缩器状态',font=('Arial', 30),bootstyle="success")
+        self.label_status_compactors = ttk.Label(self.labelframe_status,text='compactors',font=('Arial', 30),bootstyle="success")
         self.label_status_compactors.grid(row=3, column=0,padx=5,pady=5,ipadx=2,ipady=2,sticky='news')
 
 
@@ -332,7 +335,7 @@ class GUI:
             bootstyle='info',
             orient='horizontal',
             value=50,
-            length=600,
+            length=400,
             mode='determinate',
             )
         self.progressbar_memory.grid(row=0, column=0,sticky='news')
@@ -343,7 +346,7 @@ class GUI:
             bootstyle='info',
             orient='horizontal',
             value=50,
-            length=600,
+            length=400,
             mode='determinate',
             )
         self.progressbar_disk.grid(row=0, column=0,sticky='news')
@@ -371,15 +374,15 @@ def update_frame():
     global model_flag
     global model_count
 
-    # if model_count <= 0:
-    #     model_flag = 1^model_flag # 切换模型
-    #     print(model_flag)
-    #     if model_flag == 0:
-    #         model_count = 30
-    #     else:
-    #         model_count = 0
-    # else:
-    #     model_count = model_count - 1
+    if model_count <= 0:
+        model_flag = 1^model_flag # 切换模型
+        print(model_flag)
+        if model_flag == 0:
+            model_count = 30
+        else:
+            model_count = 0
+    else:
+        model_count = model_count - 1
 
 
     if mode == "Standby":
@@ -390,19 +393,20 @@ def update_frame():
         ret, frame = camera.read()# cv读取摄像头
         frame = cv2.flip(frame, 1) # 反转图像
         annotated_frame = None
+            
+        if model_flag == 1:
+            results = det_ncnn_model.predict(
+                    source=frame,imgsz=320,device="cpu",iou=0.5,
+                    conf=0.25,max_det=3
+                    )# 模型推理(预测)
+            annotated_frame = results[0].plot()# 绘制预测结果
+        else:
+            results = cls_ncnn_model.predict(
+                    source=frame,imgsz=224,device="cpu",iou=0.5,
+                    conf=0.25,max_det=3
+                    )# 模型推理(预测)
+            annotated_frame = frame
         
-        # if model_flag == 1:
-        #     results = det_ncnn_model.predict(
-        #             source=frame,imgsz=320,device="cpu",iou=0.5,
-        #             conf=0.25,max_det=3
-        #             )# 模型推理(预测)
-        #     annotated_frame = results[0].plot()# 绘制预测结果
-        # else:
-        #     results = cls_ncnn_model.predict(
-        #             source=frame,imgsz=224,device="cpu",iou=0.5,
-        #             conf=0.25,max_det=3
-        #             )# 模型推理(预测)
-        annotated_frame = frame
         '''
         results = ncnn_model.track(
             source=frame,imgsz=480,device="cpu",iou=0.5,
@@ -436,7 +440,7 @@ def update_frame():
     pilImage = pilImage.resize(( image_width, image_height), Image.LANCZOS)# 调整图像尺寸以适应tkinter窗口
     static_image_container = ImageTk.PhotoImage(image=pilImage)# 将图像转换为tkinter格式，并存入静态变量中
     gui.canvas_video.create_image(0, 0, anchor='nw', image=static_image_container) # 显示图像
-    gui.root.after(100, update_frame)  # 每100毫秒更新一次图像
+    gui.root.after(10, update_frame)  # 每100毫秒更新一次图像
 update_frame() # 启动更新函数
 
 
