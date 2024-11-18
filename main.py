@@ -25,7 +25,7 @@ static_image_container = None
 print("载入模型...")
 cls_ncnn_model = YOLO("model/yolo11n_cls_224_ncnn_model",task='classify')
 
-det_ncnn_model = YOLO("model\yolo11n_det_320_ncnn_model",task='detect')
+det_ncnn_model = YOLO("model/yolo11n_det_320_ncnn_model",task='detect')
 
 print("模型载入完毕")
 
