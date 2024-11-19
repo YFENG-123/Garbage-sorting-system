@@ -39,6 +39,7 @@ sympy==1.13.1
 torch==2.5.0
 torchvision==0.20.0
 tqdm==4.66.5
+ttkbootstrap==1.10.1
 typing_extensions==4.12.2
 tzdata==2024.2
 ultralytics==8.3.19
