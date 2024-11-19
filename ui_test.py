@@ -1,14 +1,14 @@
 import time
 #import gpiozero
-from PIL import Image, ImageTk  # 图像控件
-Image.CUBIC = Image.BICUBIC # 显式修复ttk包bug
+import cv2
 import tkinter as tk
 import ttkbootstrap as ttk
+
 from ttkbootstrap.tableview import Tableview
 from ttkbootstrap.constants import *
-import cv2
 from ultralytics import YOLO
-
+from PIL import Image, ImageTk  # 图像控件
+Image.CUBIC = Image.BICUBIC # 显式修复ttk包bug
 #模式
 mode = None
 
