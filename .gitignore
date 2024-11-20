@@ -1,7 +1,7 @@
+
 .lgd-nfy0
 runs/
-test_cn.py
-test_tk.py
+.ruff_cache/
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
