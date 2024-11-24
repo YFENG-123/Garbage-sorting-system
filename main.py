@@ -30,8 +30,12 @@ class GUI:
     static_image_container = None
     
     #帧时间戳
+
+    num_frames = 120
+    frames_count = 0
     time_stamp = 0.0
     last_time_stamp = 0.0
+    FPS = 0
 
     # 初始化
     def __init__(self):
@@ -237,17 +241,17 @@ class GUI:
         self.label_num = ttk.Label(self.labelframe_video,text='number',font=('Arial', 30),bootstyle="success")
         self.label_num.grid(row=2, column=2,padx=5,pady=5,ipadx=2,ipady=2)
 
-        # 分类状态框
-        self.floodgauge_classify = ttk.Floodgauge(
-            master=self.labelframe_video,
-            bootstyle="success",
-            length=200,
-            font=("Arial", 30),
-            mask="OK",
-            mode="determinate",
-            )
-        self.floodgauge_classify.grid(row=2, column=3,padx=5,pady=5,ipadx=2,ipady=2)
-        self.floodgauge_classify.start()
+        # # 分类状态框
+        # self.floodgauge_classify = ttk.Floodgauge(
+        #     master=self.labelframe_video,
+        #     bootstyle="success",
+        #     length=200,
+        #     font=("Arial", 30),
+        #     mask="OK",
+        #     mode="determinate",
+        #     )
+        # self.floodgauge_classify.grid(row=2, column=3,padx=5,pady=5,ipadx=2,ipady=2)
+        # self.floodgauge_classify.start()
 
         # 本轮投放时间
         self.label_num = ttk.Label(self.labelframe_video,text='00:00:00',font=('Arial', 30),bootstyle="success")
@@ -364,15 +368,17 @@ class GUI:
     
     #定时刷新
     def update_frame(self):
-        time_start = time.time()
+        
         # 获取摄像头或视频帧
         if self.mode == "Standby":
             ret, frame = self.video.read()
         else:
+            time_start = time.time()
+
             ret, frame = self.camera.read()# cv读取摄像头
             frame = cv2.flip(frame, 1) # 反转图像
-                
-            if self.model_flag == 1:
+
+            if self.model_flag == 0:
                 results = self.det_ncnn_model.predict(
                         source=frame,imgsz=320,device="cpu",iou=0.5,
                         conf=0.25,max_det=3
@@ -391,22 +397,30 @@ class GUI:
                 conf=0.25,max_det=1,persist=True,tracker="bytetrack.yaml"
                 )#模型推理(跟踪)
             '''
-
+            print("time_cost:",time.time() - time_start)  
         # 计算FPS
         self.time_stamp = time.time()
         loop_time = self.time_stamp - self.last_time_stamp
         self.last_time_stamp = self.time_stamp
+        self.FPS = int(1 / loop_time)
         print("loop_time:",loop_time)
-        FPS = int(1.0 / loop_time)
 
-        # 更新仪表盘
-        self.meter_fps.configure(amountused=FPS) 
-        self.floodgauge_classify.step(1) 
+        # 更新仪表盘(每120帧更新一次)
+        if self.frames_count % self.num_frames == 0:
+            self.frames_count = 1
+            self.meter_fps.configure(amountused=self.FPS)     
+        else :
+            self.frames_count += 1
+        
+        
+        
+        
+        # self.floodgauge_classify.step(1) 
         # gui.tableview_history.insert_row(0,('test',1))
         # gui.tableview_history.load_table_data()
-        
+    
         # 在图像左上角添加FPS文本
-        fps_text = f"FPS: {FPS:.2f}"
+        fps_text = f"FPS: {self.FPS:.2f}"
         font = cv2.FONT_HERSHEY_SIMPLEX
         font_scale = 1
         font_thickness = 2
@@ -420,13 +434,11 @@ class GUI:
         resize_image = pillow_image.resize(( self.image_width, self.image_height), Image.LANCZOS)# 调整图像尺寸以适应tkinter窗口
         tk_image = ImageTk.PhotoImage(image=resize_image)# 将图像转换为tkinter格式，并存入静态变量中
         
-
-        print("time_cost:",time.time()-time_start)
-        
         # 显示图像
         self.canvas_video.create_image(0, 0, anchor='nw', image=tk_image) # 显示图像
         self.static_image_container = tk_image # 将图像转换为tkinter格式，并存入静态变量中
-        self.root.after(0, self.update_frame)  # 每100毫秒更新一次图像
+
+        self.root.after(1, self.update_frame)  # 每1毫秒更新一次图像
 
     # 终止程序
     def shutdown(self):
