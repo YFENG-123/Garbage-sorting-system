@@ -55,9 +55,10 @@ try:
             set_angle(p1, current_angle1)  # 设置舵机1的新方向  
             set_angle(p2, 0)  # 舵机2向左倾倒（0°）  
             sleep(2)  # 停留2秒  
+            current_angle1 = (current_angle1 - 90) % 360  # 重新调整当前角度  
             set_angle(p1, current_angle1)  # 舵机1不改变方向的返回姿势，也可以根据需要调整为初始角  
             set_angle(p2, 90)  # 返回垂直位置  
-            current_angle1 = (current_angle1 - 90) % 360  # 重新调整当前角度  
+
 
         elif user_input == "r":  # 右倾动作  
             print("向右倾")  
@@ -65,9 +66,10 @@ try:
             set_angle(p1, current_angle1)  # 设置舵机1的新方向  
             set_angle(p2, 0)  # 舵机2向右倾倒（0°）  
             sleep(2)  # 停留2秒  
+            current_angle1 = (current_angle1 + 90) % 360  # 重新调整当前角度 
             set_angle(p1, current_angle1)  # 舵机1不改变方向的返回姿势，也可以根据需要调整为初始角  
             set_angle(p2, 90)  # 返回垂直位置  
-            current_angle1 = (current_angle1 + 90) % 360  # 重新调整当前角度  
+ 
 
 finally:  
     p1.stop()  
