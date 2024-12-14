@@ -33,7 +33,7 @@ set_angle(p2, 90)  # 初始化舵机2垂直位置
 
 try:  
     while True:  
-        user_input = input("输入 (f: 前倾, b: 后倾, l: 左倾, r: 右倾): ")  
+        user_input = input("输入 (f: 前倾, b: 后倾, l: 左倾, r: 右倾, q: 退出): ")  
 
         if user_input == "f":  # 前倾动作  
             print("向前倾")  
@@ -56,8 +56,9 @@ try:
             set_angle(p2, 0)  # 舵机2向左倾倒（0°）  
             sleep(2)  # 停留2秒  
             current_angle1 = (current_angle1 - 90) % 360  # 重新调整当前角度 
-            set_angle(p1, current_angle1)  # 舵机1不改变方向的返回姿势，也可以根据需要调整为初始角  
             set_angle(p2, 90)  # 返回垂直位置  
+            set_angle(p1, current_angle1)  # 舵机1不改变方向的返回姿势，也可以根据需要调整为初始角  
+
  
 
         elif user_input == "r":  # 右倾动作  
@@ -67,8 +68,12 @@ try:
             set_angle(p2, 0)  # 舵机2向右倾倒（0°）  
             sleep(2)  # 停留2秒  
             current_angle1 = (current_angle1 + 90) % 360  # 重新调整当前角度  
+            set_angle(p2, 90)  # 返回垂直位置
             set_angle(p1, current_angle1)  # 舵机1不改变方向的返回姿势，也可以根据需要调整为初始角  
-            set_angle(p2, 90)  # 返回垂直位置  
+  
+
+        elif user_input == "q":  # 按下 'q' 并退出  
+            break  
 
 finally:  
     p1.stop()  
