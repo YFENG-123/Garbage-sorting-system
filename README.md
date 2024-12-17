@@ -16,10 +16,10 @@
   - SDCard Reader
 
 ## GPIO Pins
-  GPIO模式为BCM
-  GPIO_Compressor使用引脚23、24
-  GPIO_Gimbal使用引脚12、13
-  GPIO_Track使用引脚17、18、27、22
+- GPIO模式为BCM:
+  - GPIO_Compressor使用引脚23、24
+  - GPIO_Gimbal使用引脚12、13
+  - GPIO_Track使用引脚17、18、27、22
 
 ## Deploy:
 
@@ -106,19 +106,19 @@
    使用gpiozero库的GPIO延时控制云台或者使用RPI.GPIO库写的四自由度云台控制
 
    -   使用gpiozero库
-         1.设置校正值，将servo.value映射到一定范围调试代码，具体请看GPIO_Gimbal.py文件.
-         2.抖动大，转动角度较小,响应较慢
+       - 设置校正值，将servo.value映射到一定范围调试代码，具体请看GPIO_Gimbal.py文件.
+       - 抖动大，转动角度较小,响应较慢
 
    -   使用RPI.GPIO库
-         1.封装好了up(),down(),left(),right(),方便调用.  
-         2.转动角度封装在列表内，方便debug.    
-         3.针对gpiozero中出现的抖动，进行了消抖操作。舵机会发生抖动是因为精度原因，它自己认为还没有达到要求的角度，所以会不断的左右纠正，最终产生抖动，所以当舵机转到指定的角度后，sleep极短时间，就将当前的占空比清零，从而进行消抖.
+       - 封装好了up(),down(),left(),right(),方便调用.  
+       - 转动角度封装在列表内，方便debug.    
+       - 针对gpiozero中出现的抖动，进行了消抖操作。舵机会发生抖动是因为精度原因，它自己认为还没有达到要求的角度，所以会不断的左右纠正，最终产生抖动，所以当舵机转到指定的角度后，sleep极短时间，就将当前的占空比清零，从而进行消抖.
 
 
 
    - #### 2.GPIO_Track
    
-     使用RPI.GPIO库写的简单正转
+     使用RPI.GPIO库写的简单正转,
      树莓派PWM IO口有限，直接使用两种转速的不同的直流电机实现两级履带差速运动
 
    - #### 3.GPIO_Compressor
