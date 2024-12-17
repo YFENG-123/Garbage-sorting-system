@@ -2,7 +2,7 @@
 
 ## Requirements：
 - Hardware :
-  - Development board : Raspberry Pi 4 Models B with 8GB RAM
+  - Development board : Raspberry Pi 4 Models B with 8GB RAM or Raspberry Pi 5 Models B with 8GB RAM
   - Camera : USB Camera
 - Software : 
   - Operator System : Raspberry Pi OS(64-bit)
@@ -16,6 +16,10 @@
   - SDCard Reader
 
 ## GPIO Pins
+  GPIO模式为BCM
+  GPIO_Compressor使用引脚23、24
+  GPIO_Gimbal使用引脚12、13
+  GPIO_Track使用引脚17、18、27、22
 
 ## Deploy:
 
@@ -113,10 +117,10 @@
 
 
    - #### 2.GPIO_Track
-
-   使用RPI.GPIO库写的简单正转
-   树莓派PWM IO口有限，直接使用两种转速的不同的直流电机实现两级履带差速运动
+   
+     使用RPI.GPIO库写的简单正转
+     树莓派PWM IO口有限，直接使用两种转速的不同的直流电机实现两级履带差速运动
 
    - #### 3.GPIO_Compressor
 
-   使用RPI.GPIO库写的简单正负极互换以及延时实现压缩
+     使用RPI.GPIO库写的简单正负极互换以及延时实现压缩
