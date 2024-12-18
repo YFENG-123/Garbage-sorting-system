@@ -10,6 +10,9 @@ from ultralytics import YOLO
 from PIL import Image, ImageTk  # 图像控件
 Image.CUBIC = Image.BICUBIC # 显式修复ttk包bug
 
+from GPIO_Gimbal import gimbal_work,gimbal_reset,gimbal_deinit
+from GPIO_Track import track_start,track_stop
+
 class GUI:
     
     #模式
@@ -18,8 +21,19 @@ class GUI:
     #模型标志
     model_flag = 0
 
-    #推理次数
-    model_count = 10
+    # #推理次数
+    # model_count = 10
+
+    # 舵机运行方向
+    duoji_det = 0
+    duoji_start_time = 0
+
+    # 传送带
+    track_status = 0
+    
+
+    # 舵机状态
+    duoji_status = 0 # 0-置位,1-倾倒
 
     #摄像头图片参数
     image_multiple = 68
@@ -31,7 +45,7 @@ class GUI:
     
     #帧时间戳
 
-    num_frames = 120
+    num_frames = 30
     frames_count = 0
     time_stamp = 0.0
     last_time_stamp = 0.0
@@ -378,7 +392,7 @@ class GUI:
             ret, frame = self.camera.read()# cv读取摄像头
             frame = cv2.flip(frame, 1) # 反转图像
 
-            if self.model_flag == 0:
+            if self.model_flag == 1:
                 results = self.det_ncnn_model.predict(
                         source=frame,imgsz=320,device="cpu",iou=0.5,
                         conf=0.25,max_det=3
@@ -408,7 +422,14 @@ class GUI:
         # 更新仪表盘(每120帧更新一次)
         if self.frames_count % self.num_frames == 0:
             self.frames_count = 1
-            self.meter_fps.configure(amountused=self.FPS)     
+            self.meter_fps.configure(amountused=self.FPS)
+            self.track_status = 1^self.track_status
+            if self.track_status == 1 :
+                track_start()
+            else :
+                track_stop()
+             
+
         else :
             self.frames_count += 1
         
@@ -438,13 +459,30 @@ class GUI:
         self.canvas_video.create_image(0, 0, anchor='nw', image=tk_image) # 显示图像
         self.static_image_container = tk_image # 将图像转换为tkinter格式，并存入静态变量中
 
+        if self.duoji_status == 0:
+            # 舵机处于置位状态
+            self.duoji_det += 1
+            if self.duoji_det % 4 == 0:
+                self.duoji_det = 0
+            # 舵机工作
+            self.duoji_status = 1 # 倾倒状态
+            gimbal_work(self.duoji_det,90)
+            self.duoji_start_time = time.time() # 获取舵机开始倾倒时间
+        else :
+            if time.time() - self.duoji_start_time >= 5.0 :
+                self.duoji_status = 0 # 置位状态
+                # 舵机置位
+                gimbal_reset(self.duoji_det,90)
+
         self.root.after(1, self.update_frame)  # 每1毫秒更新一次图像
 
     # 终止程序
     def shutdown(self):
         self.camera.release() # 释放摄像头
         self.video.release() # 释放视频
+        gimbal_deinit() # 释放舵机
         self.root.destroy() # 销毁窗口
+        
     
 gui = GUI()
 
