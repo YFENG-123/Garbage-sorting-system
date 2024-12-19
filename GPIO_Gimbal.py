@@ -19,7 +19,7 @@ p2.start(0)  # 初始占空比为0
 
 def set_angle(pwm, angle):  
     if 0 <= angle <= 180:  
-        pulse = 360 + (angle / 180) * (2500 - 360)  # 将角度转换为脉宽  
+        pulse = 500 + (angle / 180) * (2500 - 360)  # 将角度转换为脉宽  
         duty_cycle = pulse / 10000 * 50  # 将脉宽转换为占空比  
         pwm.ChangeDutyCycle(duty_cycle)  
         sleep(1)  # 等待舵机移动到目标位置  
@@ -35,24 +35,24 @@ def gimbal_work(cls,current_angle1):
     if cls == 0:  # 前倾动作  
         print("向前倾")  
         set_angle(p1, current_angle1)  # 舵机1保持当前角度  
-        set_angle(p2, 0)  # 舵机2向前倾倒（0°）
+        set_angle(p2, 30)  # 舵机2向前倾倒（0°）
 
     elif cls == 1:  # 后倾动作  
         print("向后倾")  
         set_angle(p1, current_angle1)  # 舵机1保持当前角度  
-        set_angle(p2, 180)  # 舵机2后倾（180°）
+        set_angle(p2, 150)  # 舵机2后倾（180°）
 
     elif cls == 2:  # 左倾动作  
         print("向左倾")  
         current_angle1 = (current_angle1 + 90)  # 舵机1向左转动90度，循环  
         set_angle(p1, current_angle1)  # 设置舵机1的新方向  
-        set_angle(p2, 0)  # 舵机2向左倾倒（0°）   
+        set_angle(p2, 30)  # 舵机2向左倾倒（0°）   
 
     elif cls == 3:  # 右倾动作  
         print("向右倾")  
         current_angle1 = (current_angle1 - 90) # 舵机1向右转动90度，循环  
         set_angle(p1, current_angle1)  # 设置舵机1的新方向  
-        set_angle(p2, 0)  # 舵机2向右倾倒（0°）  
+        set_angle(p2, 30)  # 舵机2向右倾倒（0°）  
 
 def gimbal_reset(cls,current_angle1):
     if cls == 0:  # 前倾动作  
