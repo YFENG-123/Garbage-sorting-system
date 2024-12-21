@@ -2,7 +2,7 @@ import RPi.GPIO as GPIO
 from time import sleep  
 
 def gimbal_init():
-    global p1,p2
+    global p1,p2,current_angle1
 
     # 定义舵机引脚  
     servopin1 = 12  # 舵机1，控制方向  
@@ -88,6 +88,8 @@ def gimbal_deinit():
     p2.stop()  
     GPIO.cleanup()
 
+# gimbal_init()
+
 # try:  
 #     while True:  
 #         user_input = input("输入 (f: 前倾, b: 后倾, l: 左倾, r: 右倾, q: 退出): ")  
@@ -95,14 +97,14 @@ def gimbal_deinit():
 #         if user_input == "f":  # 前倾动作  
 #             print("向前倾")  
 #             set_angle(p1, current_angle1)  # 舵机1保持当前角度  
-#             set_angle(p2, 0)  # 舵机2向前倾倒（0°）  
+#             set_angle(p2, 30)  # 舵机2向前倾倒（0°）  
 #             sleep(2)  # 停留2秒  
 #             set_angle(p2, 90)  # 返回垂直位置  
 
 #         elif user_input == "b":  # 后倾动作  
 #             print("向后倾")  
 #             set_angle(p1, current_angle1)  # 舵机1保持当前角度  
-#             set_angle(p2, 180)  # 舵机2后倾（180°）  
+#             set_angle(p2, 150)  # 舵机2后倾（180°）  
 #             sleep(2)  # 停留2秒  
 #             set_angle(p2, 90)  # 返回垂直位置  
 
@@ -110,7 +112,7 @@ def gimbal_deinit():
 #             print("向左倾")  
 #             current_angle1 = (current_angle1 + 90) % 360  # 舵机1向左转动90度，循环  
 #             set_angle(p1, current_angle1)  # 设置舵机1的新方向  
-#             set_angle(p2, 0)  # 舵机2向左倾倒（0°）  
+#             set_angle(p2, 30)  # 舵机2向左倾倒（0°）  
 #             sleep(2)  # 停留2秒  
 #             current_angle1 = (current_angle1 - 90) % 360  # 重新调整当前角度 
 #             set_angle(p2, 90)  # 返回垂直位置  
@@ -122,7 +124,7 @@ def gimbal_deinit():
 #             print("向右倾")  
 #             current_angle1 = (current_angle1 - 90) % 360  # 舵机1向右转动90度，循环  
 #             set_angle(p1, current_angle1)  # 设置舵机1的新方向  
-#             set_angle(p2, 0)  # 舵机2向右倾倒（0°）  
+#             set_angle(p2, 30)  # 舵机2向右倾倒（0°）  
 #             sleep(2)  # 停留2秒  
 #             current_angle1 = (current_angle1 + 90) % 360  # 重新调整当前角度  
 #             set_angle(p2, 90)  # 返回垂直位置

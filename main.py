@@ -17,7 +17,7 @@ from GPIO_Compressor import compressor_init,compressor_work
 class GUI:
     
     #模式
-    mode = None
+    mode = 0
 
     #模型标志
     model_flag = 0
@@ -28,6 +28,7 @@ class GUI:
     # 舵机运行方向
     duoji_det = 0
     duoji_start_time = 0
+    last_result = 0
 
     # 传送带
     track_status = 0
@@ -45,7 +46,7 @@ class GUI:
     static_image_container = None
     
     #帧时间戳
-    num_frames = 30
+    num_frames = 50
     frames_count = 0
     time_stamp = 0.0
     last_time_stamp = 0.0
@@ -62,7 +63,9 @@ class GUI:
 
         #启动摄像头（较费时），载入视频
         print("启动摄像头...")
-        self.camera = cv2.VideoCapture(0) # cv初始化摄像头  
+        self.camera = cv2.VideoCapture(0) # cv初始化摄像头 
+        if not self.camera.isOpened(): 
+            self.camera = cv2.VideoCapture(1)
         self.video = cv2.VideoCapture("Video.mp4")# cv初始化视频
         print("摄像头启动成功")
 
@@ -71,6 +74,7 @@ class GUI:
         gimbal_init()
         track_init()
         compressor_init()
+        track_start()
         print("GPIO启动成功")
         
         # 创建窗口
@@ -394,8 +398,8 @@ class GUI:
     def update_frame(self):
         
         # 获取摄像头或视频帧
-        if self.mode == "Standby":
-            ret, frame = self.video.read()
+        if self.mode == 0:
+            ret, annotated_frame = self.video.read()
         else:
             time_start = time.time()
 
@@ -435,11 +439,8 @@ class GUI:
             self.frames_count = 1
             self.meter_fps.configure(amountused=self.FPS)
             self.track_status = 1^self.track_status
-            if self.track_status == 1 :
-                track_start()
-            else :
-                track_stop()
-
+            self.button_conveyor_status.config(text='stop',bootstyle='danger-outline')
+            track_stop()
             if self.duoji_status == 0:
                 # 舵机处于置位状态
                 self.duoji_det += 1
@@ -447,13 +448,18 @@ class GUI:
                     self.duoji_det = 0
                 # 舵机工作
                 self.duoji_status = 1 # 倾倒状态
+                self.button_camera_status.config(text='working')
                 gimbal_work(self.duoji_det,90)
+                # self.last_result = results[0].probs.top1
                 self.duoji_start_time = time.time() # 获取舵机开始倾倒时间
             else :
                 if time.time() - self.duoji_start_time >= 5.0 :
                     self.duoji_status = 0 # 置位状态
+                    self.button_camera_status.config(text='get ready')
                     # 舵机置位
                     gimbal_reset(self.duoji_det,90)
+                    track_start()
+                    self.button_conveyor_status.config(text='working',bootstyle='success-outline')
 
         else :
             self.frames_count += 1
@@ -484,7 +490,9 @@ class GUI:
         self.canvas_video.create_image(0, 0, anchor='nw', image=tk_image) # 显示图像
         self.static_image_container = tk_image # 将图像转换为tkinter格式，并存入静态变量中
 
-        compressor_work()
+        
+
+        # compressor_work()
 
         self.root.after(1, self.update_frame)  # 每1毫秒更新一次图像
 
@@ -496,7 +504,7 @@ class GUI:
         self.root.destroy() # 销毁窗口
         
     
-gui = GUI()
+gui = GUI() 
 
 #窗口全屏，绑定ESC退出，运行窗口循环
 gui.root.attributes("-fullscreen", True)
