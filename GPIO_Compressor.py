@@ -5,7 +5,7 @@ from time import sleep
 
 
 def compressor_init():  
-    global Trig,Echo,INT5,INT6,safe_dis,time_to_run
+    global Trig,Echo,INT5,INT6
 
     # 定义超声波模块的GPIO口  
     Trig = 19  # 发射端  
@@ -15,8 +15,7 @@ def compressor_init():
     INT5 = 23  # 压缩机启动  
     INT6 = 24  # 复位控制  
 
-    safe_dis = 4  # 设置一个安全距离（单位：cm）  
-    time_to_run = 2  # 压缩和复位持续的时间（秒）
+    
 
     # 设置接触警告  
     GPIO.setwarnings(False)  
@@ -65,16 +64,7 @@ def compress_and_reset(time_to_run):
     GPIO.output(INT5, GPIO.LOW)  
     sleep(0.5)  # 等待一段时间  
 
-def compressor_work():
-    barrier_dis = get_distance()  # 获取当前障碍物的距离  
-    print(f"当前距离: {barrier_dis:.2f} cm")  
 
-    # 当测得距离小于安全距离时，进行压缩  
-    if barrier_dis < safe_dis:  
-        compress_and_reset(time_to_run)  
-    else:  
-        print("垃圾桶内空间足够，无需压缩")  
-      
 
 # def main():  
 #     init()  

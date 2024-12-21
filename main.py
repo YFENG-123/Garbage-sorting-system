@@ -12,30 +12,30 @@ Image.CUBIC = Image.BICUBIC # 显式修复ttk包bug
 
 from GPIO_Gimbal import gimbal_init,gimbal_work,gimbal_reset,gimbal_deinit
 from GPIO_Track import track_init,track_start,track_stop
-from GPIO_Compressor import compressor_init,compressor_work
+from GPIO_Compressor import compressor_init,compress_and_reset,get_distance
 
 class GUI:
     
-    #模式
-    mode = 0
+    # 模式
+    mode = 1
 
-    #模型标志
+    # 模型标志
     model_flag = 0
 
-    # #推理次数
-    # model_count = 10
+    # 系统工作状态
+    system_status = 0
+
+    # 垃圾识别判断
+    waste_exist_frame = 0 # 垃圾识别帧
+    waste_exist_frame_max = 10 # 垃圾识别帧阈值
+    waste_exist_flag = True # 垃圾识别结果
 
     # 舵机运行方向
-    duoji_det = 0
     duoji_start_time = 0
-    last_result = 0
 
-    # 传送带
-    track_status = 0
-    
-
-    # 舵机状态
-    duoji_status = 0 # 0-置位,1-倾倒
+    # 压缩机构
+    safe_dis = 4  # 设置一个安全距离（单位：cm）  
+    time_to_run = 2  # 压缩和复位持续的时间（秒）
 
     #摄像头图片参数
     image_multiple = 40
@@ -57,8 +57,8 @@ class GUI:
 
         #载入模型
         print("载入模型...")
-        self.cls_ncnn_model = YOLO("model/yolo11n_single_cls_224_ncnn_model",task='classify')
-        self.det_ncnn_model = YOLO("model/yolo11n_det_320_ncnn_model",task='detect')
+        self.cls_ncnn_model = YOLO("model\yolo11n_cls_diy_v2_ncnn_model",task='classify')
+        # self.det_ncnn_model = YOLO("model/yolo11n_det_320_ncnn_model",task='detect')
         print("模型载入完毕")
 
         #启动摄像头（较费时），载入视频
@@ -235,7 +235,7 @@ class GUI:
             arcoffset=-210,
             arcrange=240,
             padding=5,
-            amounttotal=20,
+            amounttotal=100,
             amountused=10,
             subtext="FPS",
             subtextstyle="success",
@@ -269,17 +269,6 @@ class GUI:
         self.label_status = ttk.Label(self.labelframe_video,text='OK!',font=('Arial', 30),bootstyle="success")
         self.label_status.grid(row=2, column=3,padx=5,pady=5,ipadx=2,ipady=2,sticky='news')
 
-        # # 分类状态框
-        # self.floodgauge_classify = ttk.Floodgauge(
-        #     master=self.labelframe_video,
-        #     bootstyle="success",
-        #     length=200,
-        #     font=("Arial", 30),
-        #     mask="OK",
-        #     mode="determinate",
-        #     )
-        # self.floodgauge_classify.grid(row=2, column=3,padx=5,pady=5,ipadx=2,ipady=2)
-        # self.floodgauge_classify.start()
 
         # 本轮投放时间
         self.label_num = ttk.Label(self.labelframe_video,text='00:00:00',font=('Arial', 30),bootstyle="success")
@@ -394,39 +383,96 @@ class GUI:
         self.label_disk = ttk.Label(self.labelframe_disk,text='50',bootstyle="info")
         self.label_disk.grid(row=0,column=1,sticky='news')
     
+    def compressor_work(self):
+        barrier_dis = get_distance()  # 获取当前障碍物的距离  
+        print(f"当前距离: {barrier_dis:.2f} cm")  
+
+        # 当测得距离小于安全距离时，进行压缩  
+        if barrier_dis < self.safe_dis:  
+            self.button_recyclable_waste_status.config(text='FULL!!!',boolstyle='danger-outline')
+            self.button_conveyor_status.config(text='stop',bootstyle='danger-outline')
+            track_stop()
+            self.button_camera_status.config(text='get ready',bootstyle='success-outline')
+            gimbal_reset(90)
+
+            self.button_compactors_status.config(text='working',boolstyle='warning-outline')
+            compress_and_reset(self.time_to_run)
+            self.button_compactors_status.config(text='get ready',boolstyle='warning-outline')
+
+            self.button_recyclable_waste_status.config(text='OK',boolstyle='success-outline')
+            self.button_conveyor_status.config(text='working',bootstyle='success-outline')
+            track_start()
+        else:  
+            print("垃圾桶内空间足够，无需压缩")  
+      
     #定时刷新
     def update_frame(self):
         
         # 获取摄像头或视频帧
-        if self.mode == 0:
-            ret, annotated_frame = self.video.read()
+        if not self.mode:
+            ret, frame = self.video.read()
         else:
             time_start = time.time()
 
             ret, frame = self.camera.read()# cv读取摄像头
             frame = cv2.flip(frame, 1) # 反转图像
 
-            if self.model_flag == 1:
-                results = self.det_ncnn_model.predict(
-                        source=frame,imgsz=320,device="cpu",iou=0.5,
-                        conf=0.25,max_det=3
-                        )# 模型推理(预测)
-                annotated_frame = results[0].plot()# 绘制预测结果
-            else:
-                results = self.cls_ncnn_model.predict(
-                        source=frame,imgsz=224,device="cpu",
-                        conf=0.25
-                        )# 模型推理(预测)
-                annotated_frame = frame
-                self.label_class.config(text=self.wastes_cls[results[0].probs.top1])
-                print(results[0].probs.top1)
-            '''
-            results = ncnn_model.track(
-                source=frame,imgsz=480,device="cpu",iou=0.5,
-                conf=0.25,max_det=1,persist=True,tracker="bytetrack.yaml"
-                )#模型推理(跟踪)
-            '''
+            # if self.model_flag == 1:
+            #     results = self.det_ncnn_model.predict(
+            #             source=frame,imgsz=320,device="cpu",iou=0.5,
+            #             conf=0.25,max_det=3
+            #             )# 模型推理(预测)
+            #     frame = results[0].plot()# 绘制预测结果
+            # else:
+            # 运行模型
+            results = self.cls_ncnn_model.predict(
+                    source=frame,imgsz=224,device="cpu",
+                    conf=0.25
+                    )# 模型推理(预测)
+
             print("time_cost:",time.time() - time_start)  
+
+            if self.system_status == 0:
+                # 系统处于等待检测状态
+                if results[0].probs.top1 != 0:
+                    self.waste_exist_frame += 1
+                else:
+                    self.waste_exist_frame = 0
+
+                if self.waste_exist_frame >= self.waste_exist_frame_max:
+                    self.waste_exist_frame = 0
+                    self.waste_exist_flag = True           
+                    self.label_class.config(text=self.wastes_cls[results[0].probs.top1])
+                    print(results[0].probs.top1)
+
+                if self.waste_exist_flag:
+                    # 垃圾存在,
+                     # 传送带停止工作
+                    self.button_conveyor_status.config(text='stop',bootstyle='danger-outline')
+                    track_stop()
+                    # 舵机倾倒垃圾
+                    self.button_camera_status.config(text='working',bootstyle='warning-outline')
+                    gimbal_work(results[0].probs.top1,90)
+                    self.duoji_start_time = time.time() # 获取舵机开始倾倒时间
+
+                    # 系统切换至垃圾倾倒状态
+                    self.system_status = 1
+
+            elif self.system_status == 1:
+                # 系统处于垃圾倾倒状态
+                if time.time() - self.duoji_start_time >= 2.0 :
+                        # 舵机工作时间大于3秒，舵机置位
+                        gimbal_reset(90)
+                        if time.time() - self.duoji_start_time >= 4.0 :
+                            # 舵机就位，垃圾倾倒完毕
+                            self.button_camera_status.config(text='get ready',bootstyle='success-outline')
+                            # 清除垃圾存在标志
+                            self.waste_exist_flag = False
+                            # 传送带重新工作
+                            self.button_conveyor_status.config(text='working',bootstyle='success-outline')
+                            # 系统切换到等待检测状态
+                            self.system_status = 0
+
         # 计算FPS
         self.time_stamp = time.time()
         loop_time = self.time_stamp - self.last_time_stamp
@@ -437,37 +483,10 @@ class GUI:
         # 更新仪表盘(每120帧更新一次)
         if self.frames_count % self.num_frames == 0:
             self.frames_count = 1
-            self.meter_fps.configure(amountused=self.FPS)
-            self.track_status = 1^self.track_status
-            self.button_conveyor_status.config(text='stop',bootstyle='danger-outline')
-            track_stop()
-            if self.duoji_status == 0:
-                # 舵机处于置位状态
-                self.duoji_det += 1
-                if self.duoji_det % 4 == 0:
-                    self.duoji_det = 0
-                # 舵机工作
-                self.duoji_status = 1 # 倾倒状态
-                self.button_camera_status.config(text='working')
-                gimbal_work(self.duoji_det,90)
-                # self.last_result = results[0].probs.top1
-                self.duoji_start_time = time.time() # 获取舵机开始倾倒时间
-            else :
-                if time.time() - self.duoji_start_time >= 5.0 :
-                    self.duoji_status = 0 # 置位状态
-                    self.button_camera_status.config(text='get ready')
-                    # 舵机置位
-                    gimbal_reset(self.duoji_det,90)
-                    track_start()
-                    self.button_conveyor_status.config(text='working',bootstyle='success-outline')
-
+            self.meter_fps.configure(amountused=self.FPS)    
         else :
             self.frames_count += 1
         
-        
-        
-        
-        # self.floodgauge_classify.step(1) 
         # gui.tableview_history.insert_row(0,('test',1))
         # gui.tableview_history.load_table_data()
     
@@ -478,10 +497,10 @@ class GUI:
         font_thickness = 2
         text_color = (0, 255, 0)  # 绿色
         text_position = (10, 30)  # 左上角位置
-        cv2.putText(annotated_frame, fps_text, text_position, font, font_scale, text_color, font_thickness)
+        cv2.putText(frame, fps_text, text_position, font, font_scale, text_color, font_thickness)
 
         # 将图像转换为tkinter格式
-        rgb_image = cv2.cvtColor(annotated_frame, cv2.COLOR_BGR2RGB) # 转换为RGB格式
+        rgb_image = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB) # 转换为RGB格式
         pillow_image = Image.fromarray(rgb_image) # 转换为Pillow格式
         resize_image = pillow_image.resize(( self.image_width, self.image_height), Image.LANCZOS)# 调整图像尺寸以适应tkinter窗口
         tk_image = ImageTk.PhotoImage(image=resize_image)# 将图像转换为tkinter格式，并存入静态变量中
@@ -490,9 +509,7 @@ class GUI:
         self.canvas_video.create_image(0, 0, anchor='nw', image=tk_image) # 显示图像
         self.static_image_container = tk_image # 将图像转换为tkinter格式，并存入静态变量中
 
-        
-
-        # compressor_work()
+        self.compressor_work()
 
         self.root.after(1, self.update_frame)  # 每1毫秒更新一次图像
 
