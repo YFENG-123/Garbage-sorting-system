@@ -10,13 +10,14 @@ from ultralytics import YOLO
 from PIL import Image, ImageTk  # 图像控件
 Image.CUBIC = Image.BICUBIC # 显式修复ttk包bug
 
-from GPIO_Gimbal import gimbal_work,gimbal_reset,gimbal_deinit
-from GPIO_Track import track_start,track_stop
+from GPIO_Gimbal import gimbal_init,gimbal_work,gimbal_reset,gimbal_deinit
+from GPIO_Track import track_init,track_start,track_stop
+from GPIO_Compressor import compressor_init,compressor_work
 
 class GUI:
     
     #模式
-    mode = None
+    mode = 0
 
     #模型标志
     model_flag = 0
@@ -27,6 +28,7 @@ class GUI:
     # 舵机运行方向
     duoji_det = 0
     duoji_start_time = 0
+    last_result = 0
 
     # 传送带
     track_status = 0
@@ -36,7 +38,7 @@ class GUI:
     duoji_status = 0 # 0-置位,1-倾倒
 
     #摄像头图片参数
-    image_multiple = 68
+    image_multiple = 40
     image_width = 16*image_multiple
     image_height = 9*image_multiple
 
@@ -44,8 +46,7 @@ class GUI:
     static_image_container = None
     
     #帧时间戳
-
-    num_frames = 30
+    num_frames = 50
     frames_count = 0
     time_stamp = 0.0
     last_time_stamp = 0.0
@@ -56,15 +57,25 @@ class GUI:
 
         #载入模型
         print("载入模型...")
-        self.cls_ncnn_model = YOLO("model/yolo11n_cls_224_ncnn_model",task='classify')
+        self.cls_ncnn_model = YOLO("model/yolo11n_single_cls_224_ncnn_model",task='classify')
         self.det_ncnn_model = YOLO("model/yolo11n_det_320_ncnn_model",task='detect')
         print("模型载入完毕")
 
         #启动摄像头（较费时），载入视频
         print("启动摄像头...")
-        self.camera = cv2.VideoCapture(0) # cv初始化摄像头  
+        self.camera = cv2.VideoCapture(0) # cv初始化摄像头 
+        if not self.camera.isOpened(): 
+            self.camera = cv2.VideoCapture(1)
         self.video = cv2.VideoCapture("Video.mp4")# cv初始化视频
         print("摄像头启动成功")
+
+        #初始化GPIO
+        print("初始化GPIO...")
+        gimbal_init()
+        track_init()
+        compressor_init()
+        track_start()
+        print("GPIO启动成功")
         
         # 创建窗口
         self.root = ttk.Window()
@@ -73,20 +84,21 @@ class GUI:
         style = ttk.Style("litera")
         style.configure('TLabelframe.Label', font=("Arial",12))
         style.configure('custom.primary.Treeview.Heading', font=('Arial', 15))  # 设置表头字体
-        style.configure('custom.primary.Treeview',rowheight=42, font=('Arial', 15))
+        style.configure('custom.primary.Treeview',rowheight=30, font=('Arial', 10))
 
         # 各类属性
-        self.tableview_items_num = 15
-        self.progressbar_length = 700
-        self.tableview_column_width = 138
-        self.metersize = 250
-        self.waste_logo_size = 45
+        self.tableview_items_num = 12
+        self.progressbar_length = 335
+        self.tableview_column_width = 110
+        self.metersize = 175
+        self.waste_logo_size = 30
 
         # 读取各类垃圾图标
         self.image_food_waste = ImageTk.PhotoImage(Image.open("gui_images/food_waste_logo.png").resize((self.waste_logo_size,self.waste_logo_size)))
         self.image_recyclable_waste = ImageTk.PhotoImage(Image.open("gui_images/recyclable_waste_logo.png").resize((self.waste_logo_size,self.waste_logo_size)))
         self.image_other_waste = ImageTk.PhotoImage(Image.open("gui_images/other_waste_logo.png").resize((self.waste_logo_size,self.waste_logo_size)))
         self.image_hazardous_waste = ImageTk.PhotoImage(Image.open("gui_images/hazardous_waste_logo.png").resize((self.waste_logo_size,self.waste_logo_size)))
+        self.wastes_cls = ['background','food_waste','hazardous_waste','other_waste','recyclable_waste']
 
         # 界面编写
         self.interface()
@@ -219,12 +231,12 @@ class GUI:
         self.meter_fps = ttk.Meter(
             master=self.labelframe_video,
             bootstyle='success',
-            metersize=self.metersize,
+            metersize=120,
             arcoffset=-210,
             arcrange=240,
             padding=5,
-            amounttotal=1000,
-            amountused=100,
+            amounttotal=20,
+            amountused=10,
             subtext="FPS",
             subtextstyle="success",
             meterthickness= 25,
@@ -236,7 +248,7 @@ class GUI:
         self.meter_conf = ttk.Meter(
             master=self.labelframe_video,
             bootstyle='success',
-            metersize=self.metersize,
+            metersize=120,
             padding=5,
             amounttotal=100,
             amountused=95.5,
@@ -249,11 +261,13 @@ class GUI:
 
         # 分类信息标签
         self.label_order = ttk.Label(self.labelframe_video,text='array',font=('Arial', 30),bootstyle="success")
-        self.label_order.grid(row=2, column=0,padx=5,pady=5,ipadx=2,ipady=2)
+        self.label_order.grid(row=2, column=0,padx=5,pady=5,ipadx=2,ipady=2,sticky='news')
         self.label_class = ttk.Label(self.labelframe_video,text='classify',font=('Arial', 30),bootstyle="success")
-        self.label_class.grid(row=2, column=1,padx=5,pady=5,ipadx=2,ipady=2)
+        self.label_class.grid(row=2, column=1,padx=5,pady=5,ipadx=2,ipady=2,sticky='news')
         self.label_num = ttk.Label(self.labelframe_video,text='number',font=('Arial', 30),bootstyle="success")
-        self.label_num.grid(row=2, column=2,padx=5,pady=5,ipadx=2,ipady=2)
+        self.label_num.grid(row=2, column=2,padx=5,pady=5,ipadx=2,ipady=2,sticky='news')
+        self.label_status = ttk.Label(self.labelframe_video,text='OK!',font=('Arial', 30),bootstyle="success")
+        self.label_status.grid(row=2, column=3,padx=5,pady=5,ipadx=2,ipady=2,sticky='news')
 
         # # 分类状态框
         # self.floodgauge_classify = ttk.Floodgauge(
@@ -269,7 +283,7 @@ class GUI:
 
         # 本轮投放时间
         self.label_num = ttk.Label(self.labelframe_video,text='00:00:00',font=('Arial', 30),bootstyle="success")
-        self.label_num.grid(row=2, column=4,padx=5,pady=5,ipadx=2,ipady=2)
+        self.label_num.grid(row=2, column=4,padx=5,pady=5,ipadx=2,ipady=2,sticky='news')
     
     # 状态框
     def create_status_frame(self):
@@ -311,7 +325,7 @@ class GUI:
         self.meter_cpu = ttk.Meter(
             master=self.labelframe_system,
             bootstyle='success',
-            metersize=200,
+            metersize=self.metersize,
             arcoffset=-210,
             arcrange=240,
             padding=5,
@@ -329,7 +343,7 @@ class GUI:
         self.meter_temp = ttk.Meter(
             master=self.labelframe_system,
             bootstyle='danger',
-            metersize=200,
+            metersize=self.metersize,
             arcoffset=-225,
             arcrange=90,
             padding=5,
@@ -356,7 +370,7 @@ class GUI:
             bootstyle='info',
             orient='horizontal',
             value=50,
-            length=400,
+            length=self.progressbar_length,
             mode='determinate',
             )
         self.progressbar_memory.grid(row=0, column=0,sticky='news')
@@ -367,7 +381,7 @@ class GUI:
             bootstyle='info',
             orient='horizontal',
             value=50,
-            length=400,
+            length=self.progressbar_length,
             mode='determinate',
             )
         self.progressbar_disk.grid(row=0, column=0,sticky='news')
@@ -384,8 +398,8 @@ class GUI:
     def update_frame(self):
         
         # 获取摄像头或视频帧
-        if self.mode == "Standby":
-            ret, frame = self.video.read()
+        if self.mode == 0:
+            ret, annotated_frame = self.video.read()
         else:
             time_start = time.time()
 
@@ -400,11 +414,12 @@ class GUI:
                 annotated_frame = results[0].plot()# 绘制预测结果
             else:
                 results = self.cls_ncnn_model.predict(
-                        source=frame,imgsz=224,device="cpu",iou=0.5,
-                        conf=0.25,max_det=3
+                        source=frame,imgsz=224,device="cpu",
+                        conf=0.25
                         )# 模型推理(预测)
                 annotated_frame = frame
-            
+                self.label_class.config(text=self.wastes_cls[results[0].probs.top1])
+                print(results[0].probs.top1)
             '''
             results = ncnn_model.track(
                 source=frame,imgsz=480,device="cpu",iou=0.5,
@@ -424,11 +439,27 @@ class GUI:
             self.frames_count = 1
             self.meter_fps.configure(amountused=self.FPS)
             self.track_status = 1^self.track_status
-            if self.track_status == 1 :
-                track_start()
+            self.button_conveyor_status.config(text='stop',bootstyle='danger-outline')
+            track_stop()
+            if self.duoji_status == 0:
+                # 舵机处于置位状态
+                self.duoji_det += 1
+                if self.duoji_det % 4 == 0:
+                    self.duoji_det = 0
+                # 舵机工作
+                self.duoji_status = 1 # 倾倒状态
+                self.button_camera_status.config(text='working')
+                gimbal_work(self.duoji_det,90)
+                # self.last_result = results[0].probs.top1
+                self.duoji_start_time = time.time() # 获取舵机开始倾倒时间
             else :
-                track_stop()
-             
+                if time.time() - self.duoji_start_time >= 5.0 :
+                    self.duoji_status = 0 # 置位状态
+                    self.button_camera_status.config(text='get ready')
+                    # 舵机置位
+                    gimbal_reset(self.duoji_det,90)
+                    track_start()
+                    self.button_conveyor_status.config(text='working',bootstyle='success-outline')
 
         else :
             self.frames_count += 1
@@ -459,20 +490,9 @@ class GUI:
         self.canvas_video.create_image(0, 0, anchor='nw', image=tk_image) # 显示图像
         self.static_image_container = tk_image # 将图像转换为tkinter格式，并存入静态变量中
 
-        if self.duoji_status == 0:
-            # 舵机处于置位状态
-            self.duoji_det += 1
-            if self.duoji_det % 4 == 0:
-                self.duoji_det = 0
-            # 舵机工作
-            self.duoji_status = 1 # 倾倒状态
-            gimbal_work(self.duoji_det,90)
-            self.duoji_start_time = time.time() # 获取舵机开始倾倒时间
-        else :
-            if time.time() - self.duoji_start_time >= 5.0 :
-                self.duoji_status = 0 # 置位状态
-                # 舵机置位
-                gimbal_reset(self.duoji_det,90)
+        
+
+        # compressor_work()
 
         self.root.after(1, self.update_frame)  # 每1毫秒更新一次图像
 
@@ -484,7 +504,7 @@ class GUI:
         self.root.destroy() # 销毁窗口
         
     
-gui = GUI()
+gui = GUI() 
 
 #窗口全屏，绑定ESC退出，运行窗口循环
 gui.root.attributes("-fullscreen", True)

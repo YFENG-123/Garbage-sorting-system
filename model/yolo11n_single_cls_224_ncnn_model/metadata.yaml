@@ -1,0 +1,18 @@
+description: Ultralytics YOLO11n-cls model trained on datasets\Dataset_waste_diy-cls
+author: Ultralytics
+date: '2024-12-19T14:20:47.509075'
+version: 8.3.19
+license: AGPL-3.0 License (https://ultralytics.com/license)
+docs: https://docs.ultralytics.com
+stride: 1
+task: classify
+batch: 1
+imgsz:
+- 224
+- 224
+names:
+  0: background
+  1: food_waste
+  2: hazardous_waste
+  3: other_waste
+  4: recyclable_waste
