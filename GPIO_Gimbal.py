@@ -49,37 +49,18 @@ def gimbal_work(cls,current_angle1):
 
     elif cls == 2:  # 左倾动作  
         print("向左倾")  
-        current_angle1 = (current_angle1 + 90)  # 舵机1向左转动90度，循环  
-        set_angle(p1, current_angle1)  # 设置舵机1的新方向  
+        angle1 = (current_angle1 + 90)  # 舵机1向左转动90度，循环  
+        set_angle(p1, angle1)  # 设置舵机1的新方向  
         set_angle(p2, 30)  # 舵机2向左倾倒（0°）   
 
     elif cls == 3:  # 右倾动作  
         print("向右倾")  
-        current_angle1 = (current_angle1 - 90) # 舵机1向右转动90度，循环  
-        set_angle(p1, current_angle1)  # 设置舵机1的新方向  
+        angle1 = (current_angle1 - 90) # 舵机1向右转动90度，循环  
+        set_angle(p1, angle1)  # 设置舵机1的新方向  
         set_angle(p2, 30)  # 舵机2向右倾倒（0°）  
 
-def gimbal_reset(cls,current_angle1):
-    if cls == 0:  # 前倾动作  
-        print("向前倾")   
-        set_angle(p2, 90)  # 返回垂直位置  
-        
-
-    elif cls == 1:  # 后倾动作  
-        print("向后倾")  
-        set_angle(p2, 90)  # 返回垂直位置
-         
-
-    elif cls == 2:  # 左倾动作  
-        print("向左倾")   
-        # current_angle1 = (current_angle1 - 90) % 360  # 重新调整当前角度 
-        set_angle(p2, 90)  # 返回垂直位置  
-        set_angle(p1, current_angle1)  # 舵机1不改变方向的返回姿势，也可以根据需要调整为初始角 
-        
-
-    elif cls == 3:  # 右倾动作  
-        print("向右倾") 
-        # current_angle1 = (current_angle1 + 90) % 360  # 重新调整当前角度  
+def gimbal_reset(current_angle1):
+        print("舵机复位")
         set_angle(p2, 90)  # 返回垂直位置
         set_angle(p1, current_angle1)  # 舵机1不改变方向的返回姿势，也可以根据需要调整为初始角 
 
