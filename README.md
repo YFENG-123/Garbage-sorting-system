@@ -17,6 +17,7 @@
 
 ## GPIO Pins
 - GPIO模式为BCM:
+  - 超声模块使用引脚19、26
   - GPIO_Compressor使用引脚23、24
   - GPIO_Gimbal使用引脚12、13
   - GPIO_Track使用引脚17、18、27、22
