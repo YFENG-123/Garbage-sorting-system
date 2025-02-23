@@ -15,12 +15,6 @@
   - VSCode
   - SDCard Reader
 
-## GPIO Pins
-- GPIO模式为BCM:
-  - 超声模块使用引脚19、26
-  - GPIO_Compressor使用引脚23、24
-  - GPIO_Gimbal使用引脚12、13
-  - GPIO_Track使用引脚17、18、27、22
 
 ## Deploy:
 
@@ -102,6 +96,13 @@
       ```
 ### 4.电控-GPIO
 
+   - #### GPIO Pins
+   - GPIO模式为BCM:
+    - 超声模块使用引脚19、26
+    - GPIO_Compressor使用引脚23、24
+    - GPIO_Gimbal使用引脚12、13
+    - GPIO_Track使用引脚17、18、27、22
+
    - #### 1.GPIO_Gimbal
 
    使用gpiozero库的GPIO延时控制云台或者使用RPI.GPIO库写的四自由度云台控制
@@ -118,7 +119,7 @@
 
 
    - #### 2.GPIO_Track
-   
+    -初赛未使用
      使用RPI.GPIO库写的简单正转,
      树莓派PWM IO口有限，直接使用两种转速的不同的直流电机实现两级履带差速运动
 
