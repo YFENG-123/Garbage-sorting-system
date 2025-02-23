@@ -97,15 +97,15 @@
 ### 4.电控-GPIO
 
    - #### GPIO Pins
-   - GPIO模式为BCM:
-    - 超声模块使用引脚19、26
-    - GPIO_Compressor使用引脚23、24
-    - GPIO_Gimbal使用引脚12、13
-    - GPIO_Track使用引脚17、18、27、22
+    - GPIO模式为BCM:
+     - 超声模块使用引脚19、26
+     - GPIO_Compressor使用引脚23、24
+     - GPIO_Gimbal使用引脚12、13
+     - GPIO_Track使用引脚17、18、27、22
 
    - #### 1.GPIO_Gimbal
 
-   使用gpiozero库的GPIO延时控制云台或者使用RPI.GPIO库写的四自由度云台控制
+   - 使用gpiozero库的GPIO延时控制云台或者使用RPI.GPIO库写的四自由度云台控制
 
    -   使用gpiozero库
        - 设置校正值，将servo.value映射到一定范围调试代码，具体请看GPIO_Gimbal.py文件.
