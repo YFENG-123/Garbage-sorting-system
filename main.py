@@ -56,10 +56,13 @@ class GUI:
     def __init__(self):
 
         #载入模型
+        
         print("载入模型...")
-        self.cls_ncnn_model = YOLO("model\yolo11n_cls_diy_v2_ncnn_model",task='classify')
+        self.cls_ncnn_model = YOLO("model\wasteCls_v3_ncnn_model",task='classify')
         # self.det_ncnn_model = YOLO("model/yolo11n_det_320_ncnn_model",task='detect')
         print("模型载入完毕")
+
+    # ... (其余初始化代码保持不变)
 
         #启动摄像头（较费时），载入视频
         print("启动摄像头...")
