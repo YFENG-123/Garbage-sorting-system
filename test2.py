@@ -1,3 +1,4 @@
+
 import RPi.GPIO as GPIO
 import argparse
 from time import sleep
@@ -67,10 +68,12 @@ def gimbal_reset():
     set_angle(p2, 155)
     set_angle(p1, 155)
 
+
 def gimbal_deinit():
     p1.stop()
     p2.stop()
     GPIO.cleanup()
+
 
 if __name__ == "__main__":
     # 命令行参数解析
@@ -91,3 +94,4 @@ if __name__ == "__main__":
 
     finally:
         gimbal_deinit()
+
