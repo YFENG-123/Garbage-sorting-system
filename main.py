@@ -1,7 +1,7 @@
 
 #import gpiozero
 import time
-import cv2
+import cv2 
 import ttkbootstrap as ttk
 
 from ttkbootstrap.tableview import Tableview
@@ -10,9 +10,11 @@ from ultralytics import YOLO
 from PIL import Image, ImageTk  # 图像控件
 Image.CUBIC = Image.BICUBIC # 显式修复ttk包bug
 
-from GPIO_Gimbal import gimbal_init,gimbal_work,gimbal_reset,gimbal_deinit
+from test_pigpio import gimbal_init,gimbal_work,gimbal_reset,gimbal_deinit
 from GPIO_Track import track_init,track_start,track_stop
-from GPIO_Compressor import compressor_init,compress_and_reset,get_distance
+from pigpio_Compressor import compressor_init,compress_and_reset,UltrasonicSensor
+from time import sleep
+
 
 class GUI:
     
@@ -27,8 +29,9 @@ class GUI:
 
     # 垃圾识别判断
     waste_exist_frame = 0 # 垃圾识别帧
-    waste_exist_frame_max = 10 # 垃圾识别帧阈值
+    waste_exist_frame_max = 15 # 垃圾识别帧阈值
     waste_exist_flag = True # 垃圾识别结果
+    waste_total = 0 # 垃圾总数
 
     # 舵机运行方向
     duoji_start_time = 0
@@ -58,7 +61,9 @@ class GUI:
         #载入模型
         
         print("载入模型...")
-        self.cls_ncnn_model = YOLO("model\wasteCls_v3_ncnn_model",task='classify')
+
+        self.cls_ncnn_model = YOLO("model/wasteCls_v3_ncnn_model",task='classify')
+
         # self.det_ncnn_model = YOLO("model/yolo11n_det_320_ncnn_model",task='detect')
         print("模型载入完毕")
 
@@ -77,6 +82,7 @@ class GUI:
         gimbal_init()
         track_init()
         compressor_init()
+        self.ultrasonic = UltrasonicSensor(trig_pin=19, echo_pin=26)
         track_start()
         print("GPIO启动成功")
         
@@ -92,7 +98,7 @@ class GUI:
         # 各类属性
         self.tableview_items_num = 12
         self.progressbar_length = 335
-        self.tableview_column_width = 110
+        self.tableview_column_width = 120
         self.metersize = 175
         self.waste_logo_size = 30
 
@@ -127,22 +133,15 @@ class GUI:
         colors = self.root.style.colors
 
         coldata = [
-            {"text": "序号", "stretch": False,"width": self.tableview_column_width},
-            {"text": "类别", "stretch": False,"width": self.tableview_column_width},
-            {"text": "数量", "stretch": False,"width": self.tableview_column_width},
-            {"text": "状态", "stretch": False,"width": self.tableview_column_width}
+            {"text": "Order", "stretch": False,"width": self.tableview_column_width},
+            {"text": "Class", "stretch": False,"width": self.tableview_column_width},
+            {"text": "Num", "stretch": False,"width": self.tableview_column_width},
+            {"text": "Status", "stretch": False,"width": self.tableview_column_width}
             
         ]
 
         rowdata = [
-            ('其他垃圾',1,1,1),
-            ('有害垃圾',2),
-            ('其他垃圾',1),
-            ('有害垃圾',2),
-            ('其他垃圾',1),
-            ('有害垃圾',2),
-            ('其他垃圾',1),
-            ('有害垃圾',2)
+
         ]
         self.tableview_history = Tableview(
             master=self.labelframe_history,
@@ -274,8 +273,8 @@ class GUI:
 
 
         # 本轮投放时间
-        self.label_num = ttk.Label(self.labelframe_video,text='00:00:00',font=('Arial', 30),bootstyle="success")
-        self.label_num.grid(row=2, column=4,padx=5,pady=5,ipadx=2,ipady=2,sticky='news')
+        self.label_time = ttk.Label(self.labelframe_video,text='00:00:00',font=('Arial', 30),bootstyle="success")
+        self.label_time.grid(row=2, column=4,padx=5,pady=5,ipadx=2,ipady=2,sticky='news')
     
     # 状态框
     def create_status_frame(self):
@@ -387,22 +386,22 @@ class GUI:
         self.label_disk.grid(row=0,column=1,sticky='news')
     
     def compressor_work(self):
-        barrier_dis = get_distance()  # 获取当前障碍物的距离  
+        barrier_dis = self.ultrasonic.get_distance() # 获取当前障碍物的距离  
         print(f"当前距离: {barrier_dis:.2f} cm")  
 
         # 当测得距离小于安全距离时，进行压缩  
         if barrier_dis < self.safe_dis:  
-            self.button_recyclable_waste_status.config(text='FULL!!!',boolstyle='danger-outline')
+            self.button_recyclable_waste_status.config(text='FULL!!!',bootstyle='danger-outline')
             self.button_conveyor_status.config(text='stop',bootstyle='danger-outline')
             track_stop()
             self.button_camera_status.config(text='get ready',bootstyle='success-outline')
-            gimbal_reset(90)
+            gimbal_reset()
 
-            self.button_compactors_status.config(text='working',boolstyle='warning-outline')
+            self.button_compactors_status.config(text='working',bootstyle='warning-outline')
             compress_and_reset(self.time_to_run)
-            self.button_compactors_status.config(text='get ready',boolstyle='warning-outline')
+            self.button_compactors_status.config(text='get ready',bootstyle='warning-outline')
 
-            self.button_recyclable_waste_status.config(text='OK',boolstyle='success-outline')
+            self.button_recyclable_waste_status.config(text='OK',bootstyle='success-outline')
             self.button_conveyor_status.config(text='working',bootstyle='success-outline')
             track_start()
         else:  
@@ -415,18 +414,14 @@ class GUI:
         if not self.mode:
             ret, frame = self.video.read()
         else:
+
+            self.compressor_work()
+
             time_start = time.time()
 
             ret, frame = self.camera.read()# cv读取摄像头
             frame = cv2.flip(frame, 1) # 反转图像
 
-            # if self.model_flag == 1:
-            #     results = self.det_ncnn_model.predict(
-            #             source=frame,imgsz=320,device="cpu",iou=0.5,
-            #             conf=0.25,max_det=3
-            #             )# 模型推理(预测)
-            #     frame = results[0].plot()# 绘制预测结果
-            # else:
             # 运行模型
             results = self.cls_ncnn_model.predict(
                     source=frame,imgsz=224,device="cpu",
@@ -444,18 +439,26 @@ class GUI:
 
                 if self.waste_exist_frame >= self.waste_exist_frame_max:
                     self.waste_exist_frame = 0
-                    self.waste_exist_flag = True           
-                    self.label_class.config(text=self.wastes_cls[results[0].probs.top1])
+                    self.waste_exist_flag = True  
+                    self.waste_total += 1        
+                    self.label_order.config(text=str(self.waste_total),bootstyle='success') 
+                    self.label_class.config(text=self.wastes_cls[results[0].probs.top1],bootstyle='success')
+                    self.label_num.config(text='1',bootstyle='success')
+                    self.label_status.config(text='OK!',bootstyle='success')
+                    self.tableview_history.insert_row(0,(self.waste_total,self.wastes_cls[results[0].probs.top1],1,'OK!'))
+                    self.tableview_history.load_table_data()
+                    
                     print(results[0].probs.top1)
 
                 if self.waste_exist_flag:
-                    # 垃圾存在,
+                    # 垃圾存在
                      # 传送带停止工作
                     self.button_conveyor_status.config(text='stop',bootstyle='danger-outline')
                     track_stop()
                     # 舵机倾倒垃圾
                     self.button_camera_status.config(text='working',bootstyle='warning-outline')
-                    gimbal_work(results[0].probs.top1,90)
+                    sleep(1)
+                    gimbal_work(results[0].probs.top1-1)
                     self.duoji_start_time = time.time() # 获取舵机开始倾倒时间
 
                     # 系统切换至垃圾倾倒状态
@@ -463,16 +466,23 @@ class GUI:
 
             elif self.system_status == 1:
                 # 系统处于垃圾倾倒状态
-                if time.time() - self.duoji_start_time >= 2.0 :
+                if time.time() - self.duoji_start_time >= 1.5 :
                         # 舵机工作时间大于3秒，舵机置位
-                        gimbal_reset(90)
-                        if time.time() - self.duoji_start_time >= 4.0 :
+                        gimbal_reset()
+                        if time.time() - self.duoji_start_time >= 3.0 :
                             # 舵机就位，垃圾倾倒完毕
                             self.button_camera_status.config(text='get ready',bootstyle='success-outline')
                             # 清除垃圾存在标志
                             self.waste_exist_flag = False
+                            self.label_order.config(text='---',bootstyle='warning')
+                            self.label_class.config(text=self.wastes_cls[0],bootstyle='warning')
+                            self.label_status.config(text='---',bootstyle='warning')
+                            self.label_num.config(text='---',bootstyle='warning')
+                            
+                        
                             # 传送带重新工作
                             self.button_conveyor_status.config(text='working',bootstyle='success-outline')
+                            track_start()
                             # 系统切换到等待检测状态
                             self.system_status = 0
 
@@ -512,7 +522,7 @@ class GUI:
         self.canvas_video.create_image(0, 0, anchor='nw', image=tk_image) # 显示图像
         self.static_image_container = tk_image # 将图像转换为tkinter格式，并存入静态变量中
 
-        self.compressor_work()
+        
 
         self.root.after(1, self.update_frame)  # 每1毫秒更新一次图像
 

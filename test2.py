@@ -67,13 +67,13 @@ def gimbal_reset():
     print("复位到中立位置")
     set_angle(p2, 155)
     set_angle(p1, 155)
-    global current_angle1
-    current_angle1 = 155
+
 
 def gimbal_deinit():
     p1.stop()
     p2.stop()
     GPIO.cleanup()
+
 
 if __name__ == "__main__":
     # 命令行参数解析
@@ -91,5 +91,7 @@ if __name__ == "__main__":
             gimbal_work(args.direction)
         sleep(2)  # 保持动作2秒
         gimbal_reset()
+
     finally:
         gimbal_deinit()
+
