@@ -5,7 +5,7 @@ from time import sleep
 
 
 def compressor_init():  
-    global Trig,Echo,INT5,INT6
+    global Trig,Echo,INT5,INT6,echo_received,t1,t2
 
     # 定义超声波模块的GPIO口  
     Trig = 19  # 发射端  
@@ -14,8 +14,6 @@ def compressor_init():
     # 定义压缩机控制GPIO口  
     INT5 = 23  # 压缩机启动  
     INT6 = 24  # 复位控制  
-
-    
 
     # 设置接触警告  
     GPIO.setwarnings(False)  
@@ -29,20 +27,31 @@ def compressor_init():
     # 压缩机引脚初始化  
     GPIO.setup(INT5, GPIO.OUT)  # 压缩机控制引脚  
     GPIO.setup(INT6, GPIO.OUT)   # 复位控制引脚  
+    
+    GPIO.add_event_detect(Echo,GPIO.BOTH,callback=echo_callback)
+    
+    t1=0
+    t2=0
+    echo_received = False
 
+def echo_callback(channel):
+    if GPIO.input(channel) == GPIO.HIGH:
+        t1 = time.time()
+    else:
+        t2 = time.time()
+        echo_received = True
+        
 # 超声波测距函数  
 def get_distance():  
+    global Trig
+
+    echo_received = False
     GPIO.output(Trig, GPIO.HIGH)  # 给Trig发送高电平，发出触发信号  
     time.sleep(0.00001)  # 需要至少10us的高电平信号，触发Trig测距  
     GPIO.output(Trig, GPIO.LOW)  
     
-    while GPIO.input(Echo) != GPIO.HIGH:  # 等待接收高电平  
-        pass  
-    t1 = time.time()  # 记录信号发出的时间  
-    
-    while GPIO.input(Echo) == GPIO.HIGH:  # 接收端还没接收到信号变成低电平就循环等待  
-        pass  
-    t2 = time.time()  # 记录接收到反馈信号的时间  
+    while not echo_received:
+        pass
     
     distance = (t2 - t1) * 340 * 100 / 2  # 计算距离，单位换成cm  
     return distance  
