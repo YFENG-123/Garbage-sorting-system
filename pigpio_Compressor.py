@@ -37,7 +37,7 @@ class UltrasonicSensor:
 
         # 初始化变量
         self.t1 = 0  # 记录高电平开始时间
-        self.t2 = 0  # 记录高电平结束时间
+        self.t2 = 10  # 记录高电平结束时间
         self.distance = 0  # 记录距离
 
         # 设置回调函数，检测Echo引脚状态变化
@@ -51,13 +51,16 @@ class UltrasonicSensor:
             self.t2 = tick
             # 计算时间差并转换为距离
             pulse_width = pigpio.tickDiff(self.t1, self.t2)  # 计算高电平持续时间（us）
+            # pulse_width = self.t2 - self.t1
+
             self.distance = (pulse_width / 1000000) * 340 * 100 / 2  # 计算距离，单位cm
+            # self.distance = pulse_width * 340 * 100 / 2  # 计算距离，单位换成cm  
 
     def get_distance(self):
         """触发超声波测距并返回距离"""
         # 发送触发信号
         self.pi.write(self.trig_pin, 1)
-        time.sleep(0.00001)  # 10us高电平
+        time.sleep(0.00005)  # 10us高电平
         self.pi.write(self.trig_pin, 0)
 
         # 等待测量完成
@@ -69,25 +72,28 @@ class UltrasonicSensor:
         self.cb.cancel()  # 取消回调
         self.pi.stop()  # 关闭pigpio连接
 
-def get_distance():
-    # 发送触发信号
-    pi.write(Trig, 1)  # 给Trig发送高电平，发出触发信号
-    time.sleep(0.00001)  # 需要至少10us的高电平信号，触发Trig测距
-    pi.write(Trig, 0)  # 停止触发信号
+    def print_time(self):
+        print(f"t1,t2:{self.t1},{self.t2}")
 
-    # 等待接收高电平
-    while pi.read(Echo) == 0:
-        pass
-    t1 = time.time()  # 记录信号发出的时间
+# def get_distance():
+#     # 发送触发信号
+#     pi.write(Trig, 1)  # 给Trig发送高电平，发出触发信号
+#     time.sleep(0.00001)  # 需要至少10us的高电平信号，触发Trig测距
+#     pi.write(Trig, 0)  # 停止触发信号
 
-    # 等待接收低电平
-    while pi.read(Echo) == 1:
-        pass
-    t2 = time.time()  # 记录接收到反馈信号的时间
+#     # 等待接收高电平
+#     while pi.read(Echo) == 0:
+#         pass
+#     t1 = time.time()  # 记录信号发出的时间
 
-    # 计算距离，单位换成cm
-    distance = (t2 - t1) * 340 * 100 / 2
-    return distance
+#     # 等待接收低电平
+#     while pi.read(Echo) == 1:
+#         pass
+#     t2 = time.time()  # 记录接收到反馈信号的时间
+
+#     # 计算距离，单位换成cm
+#     distance = (t2 - t1) * 340 * 100 / 2
+#     return distance
 
 def compress_and_reset(time_to_run):
     print("检测到障碍物，开始压缩")
