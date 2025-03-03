@@ -28,7 +28,6 @@ def set_angle(pin, angle):
     angle = max(0, min(270, angle))  # 限制角度范围
     pulse_width = SERVO_MIN + (angle / 270) * (SERVO_MAX - SERVO_MIN)
     pi.set_servo_pulsewidth(pin, pulse_width)
-    sleep(0.5)  # 确保舵机运动时间
 
 def gimbal_work(cls):
     global current_angle1

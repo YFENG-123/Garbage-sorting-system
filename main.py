@@ -12,8 +12,7 @@ Image.CUBIC = Image.BICUBIC # 显式修复ttk包bug
 
 from test_pigpio import gimbal_init,gimbal_work,gimbal_reset,gimbal_deinit
 from GPIO_Track import track_init,track_start,track_stop
-from pigpio_Compressor import compressor_init,compress_and_reset,UltrasonicSensor
-from time import sleep
+from pigpio_Compressor import compressor_init,start_compress,stop_compress,reset_compress,UltrasonicSensor
 
 
 class GUI:
@@ -32,7 +31,7 @@ class GUI:
 
     # 垃圾识别判断
     waste_exist_frame = 0 # 垃圾识别帧
-    waste_exist_frame_max = 15 # 垃圾识别帧阈值
+    waste_exist_frame_max = 3 # 垃圾识别帧阈值
     waste_exist_flag = True # 垃圾识别结果
     waste_total = 0 # 垃圾总数
 
@@ -40,8 +39,10 @@ class GUI:
     duoji_start_time = 0
 
     # 压缩机构
-    safe_dis = 4  # 设置一个安全距离（单位：cm）  
+    compressor_work_status = 0 # 压缩机构工作状态
+    safe_dis = 6.0  # 设置一个安全距离（单位：cm）  
     time_to_run = 3  # 压缩和复位持续的时间（秒）
+    compressor_t1 = 0 # 压缩开始时间
 
     #摄像头图片参数
     image_multiple = 40
@@ -388,23 +389,35 @@ class GUI:
         self.ultrasonic.print_time()
         print(f"当前距离: {barrier_dis:.2f} cm")  
 
-        # 当测得距离小于安全距离时，进行压缩  
-        if barrier_dis < self.safe_dis:  
-            self.button_recyclable_waste_status.config(text='FULL!!!',bootstyle='danger-outline')
-            self.button_conveyor_status.config(text='stop',bootstyle='danger-outline')
-            track_stop()
-            self.button_camera_status.config(text='get ready',bootstyle='success-outline')
-            gimbal_reset()
+        if self.compressor_work_status == 0:
 
-            self.button_compactors_status.config(text='working',bootstyle='warning-outline')
-            compress_and_reset(self.time_to_run)
-            self.button_compactors_status.config(text='get ready',bootstyle='warning-outline')
-
-            self.button_recyclable_waste_status.config(text='OK',bootstyle='success-outline')
-            self.button_conveyor_status.config(text='working',bootstyle='success-outline')
-            track_start()
-        else:  
-            print("垃圾桶内空间足够，无需压缩")  
+            # 当测得距离小于安全距离时，进行压缩  
+            if barrier_dis < self.safe_dis:  
+                self.button_recyclable_waste_status.config(text='FULL!!!',bootstyle='danger-outline')
+                self.button_conveyor_status.config(text='stop',bootstyle='danger-outline')
+                track_stop() # 传送带停止
+                self.button_camera_status.config(text='get ready',bootstyle='success-outline')
+                gimbal_reset() # 舵机复位
+                self.button_compactors_status.config(text='working',bootstyle='warning-outline')
+                self.compressor_work_status = 1 # 压缩机构设为压缩状态
+                self.compressor_t1 = time.time()
+                start_compress()
+            # else:  
+            #     print("垃圾桶内空间足够，无需压缩")  
+        
+        else:
+            if time.time() - self.compressor_t1 >= 2 * self.time_to_run + 0.5:
+                stop_compress()
+                self.compressor_work_status = 0
+                self.button_compactors_status.config(text='get ready',bootstyle='warning-outline')
+                self.button_recyclable_waste_status.config(text='OK',bootstyle='success-outline')
+                self.button_conveyor_status.config(text='working',bootstyle='success-outline')
+                track_start()
+            elif time.time() - self.compressor_t1 >= self.time_to_run + 0.5:
+                reset_compress()
+            elif time.time() - self.compressor_t1 >= self.time_to_run:
+                stop_compress()
+        
       
     #定时刷新
     def update_frame(self):
@@ -415,7 +428,7 @@ class GUI:
         camframe = cv2.flip(camframe, 1) # 反转图像
 
 
-        if self.mode and  ((time.time() - self.mode_t1) > 10.0):
+        if self.mode and  ((time.time() - self.mode_t1) > 30.0):
             self.mode = 0
         
         # 获取摄像头或视频帧
@@ -425,7 +438,6 @@ class GUI:
                     self.video.set(cv2.CAP_PROP_POS_FRAMES, 0)  # 重置视频到开头
                     self.root.after(1, self.update_frame)  # 每1毫秒更新一次图像  # 跳过本次循环，重新读取帧
         else:
-
             frame = camframe
 
             
@@ -436,27 +448,41 @@ class GUI:
                 conf=0.25
                 )# 模型推理(预测)
 
-        print("time_cost:",time.time() - time_start)  
+         
 
         self.compressor_work()
 
-        if self.system_status == 0:
+        if self.system_status == 0 and self.compressor_work_status == 0:
             # 系统处于等待检测状态
-            if results[0].probs.top1 != 0:
+            if results[0].probs.top1 != 0 :
                 self.waste_exist_frame += 1
+                for i in range(2):
+                    ret, camframe = self.camera.read()# cv读取摄像头
+                    camframe = cv2.flip(camframe, 1) # 反转图像
+                     # 运行模型
+                    results = self.cls_ncnn_model.predict(
+                            source=camframe,imgsz=224,device="cpu",
+                            conf=0.25
+                            )# 模型推理(预测)
+                    if results[0].probs.top1 != 0 :
+                        self.waste_exist_frame += 1
+                    
+                
+                if self.waste_exist_frame >= self.waste_exist_frame_max:
+                    self.waste_exist_frame = 0
+                    self.waste_exist_flag = True  
+                    self.waste_total += 1        
+                    self.label_order.config(text=str(self.waste_total),bootstyle='success') 
+                    self.label_class.config(text=self.wastes_cls[results[0].probs.top1],bootstyle='success')
+                    self.label_num.config(text='1',bootstyle='success')
+                    self.label_status.config(text='OK!',bootstyle='success')
+                    # self.tableview_history.insert_row(0,(self.waste_total,self.wastes_cls[results[0].probs.top1],1,'OK!'))
+                    # self.tableview_history.load_table_data()
+
             else:
                 self.waste_exist_frame = 0
 
-            if self.waste_exist_frame >= self.waste_exist_frame_max:
-                self.waste_exist_frame = 0
-                self.waste_exist_flag = True  
-                self.waste_total += 1        
-                self.label_order.config(text=str(self.waste_total),bootstyle='success') 
-                self.label_class.config(text=self.wastes_cls[results[0].probs.top1],bootstyle='success')
-                self.label_num.config(text='1',bootstyle='success')
-                self.label_status.config(text='OK!',bootstyle='success')
-                self.tableview_history.insert_row(0,(self.waste_total,self.wastes_cls[results[0].probs.top1],1,'OK!'))
-                self.tableview_history.load_table_data()
+            
                 
                 print(results[0].probs.top1)
 
@@ -467,8 +493,9 @@ class GUI:
                 track_stop()
                 # 舵机倾倒垃圾
                 self.button_camera_status.config(text='working',bootstyle='warning-outline')
-                sleep(1)
+                t2 = time.time()
                 gimbal_work(results[0].probs.top1-1)
+                print("time_work:",time.time() - t2) 
                 self.duoji_start_time = time.time() # 获取舵机开始倾倒时间
 
                 # 系统切换至垃圾倾倒状态
@@ -482,8 +509,10 @@ class GUI:
             # 系统处于垃圾倾倒状态
             if time.time() - self.duoji_start_time >= 1.5 :
                     # 舵机工作时间大于3秒，舵机置位
+                    t1 = time.time()
                     gimbal_reset()
-                    if time.time() - self.duoji_start_time >= 3.0 :
+                    print("time_reset:",time.time() - t1) 
+                    if time.time() - self.duoji_start_time >= 4.0 :
                         # 舵机就位，垃圾倾倒完毕
                         self.button_camera_status.config(text='get ready',bootstyle='success-outline')
                         # 清除垃圾存在标志
