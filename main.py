@@ -14,6 +14,8 @@ from test_pigpio import gimbal_init,gimbal_work,gimbal_reset,gimbal_deinit
 from GPIO_Track import track_init,track_start,track_stop
 from pigpio_Compressor import compressor_init,start_compress,stop_compress,reset_compress,UltrasonicSensor
 
+import pi_system
+
 
 class GUI:
     
@@ -53,7 +55,7 @@ class GUI:
     static_image_container = None
     
     #帧时间戳
-    num_frames = 50
+    num_frames = 70
     frames_count = 0
     time_stamp = 0.0
     last_time_stamp = 0.0
@@ -97,7 +99,7 @@ class GUI:
         # 各类属性
         self.tableview_items_num = 12
         self.progressbar_length = 335
-        self.tableview_column_width = 120
+        self.tableview_column_width = 115
         self.metersize = 175
         self.waste_logo_size = 30
 
@@ -106,7 +108,7 @@ class GUI:
         self.image_recyclable_waste = ImageTk.PhotoImage(Image.open("gui_images/recyclable_waste_logo.png").resize((self.waste_logo_size,self.waste_logo_size)))
         self.image_other_waste = ImageTk.PhotoImage(Image.open("gui_images/other_waste_logo.png").resize((self.waste_logo_size,self.waste_logo_size)))
         self.image_hazardous_waste = ImageTk.PhotoImage(Image.open("gui_images/hazardous_waste_logo.png").resize((self.waste_logo_size,self.waste_logo_size)))
-        self.wastes_cls = ['background','food_waste','hazardous_waste','other_waste','recyclable_waste']
+        self.wastes_cls = ['None','Food Waste','Hazardous Waste','Other Waste','Recyclable Waste']
 
         # 界面编写
         self.interface()
@@ -125,7 +127,7 @@ class GUI:
     def create_history_frame(self):
 
         # 标签框
-        self.labelframe_history = ttk.Labelframe(self.root, text="历史记录")
+        self.labelframe_history = ttk.Labelframe(self.root, text="History")
         self.labelframe_history.grid(row=0, column=0,rowspan=1,padx=1,pady=1,ipadx=2,ipady=2)
 
         # 列表框
@@ -160,21 +162,21 @@ class GUI:
     def create_total_frame(self):
         
         # 标签框
-        self.labelframe_total = ttk.Labelframe(self.root, text="投放统计")
+        self.labelframe_total = ttk.Labelframe(self.root, text="Garbage Disposal Statistics")
         self.labelframe_total.grid(row=1, column=1,rowspan=1,padx=1,pady=1,ipadx=2,ipady=2,sticky='news')
 
         # 各类垃圾标签框
-        self.labelframe_food_waste = ttk.Labelframe(self.labelframe_total,text='厨余垃圾',bootstyle="success")
+        self.labelframe_food_waste = ttk.Labelframe(self.labelframe_total,text='Food Waste',bootstyle="success")
         self.labelframe_food_waste.grid(row=0,column=0,padx=5,pady=5,ipadx=2,ipady=2)
-        self.labelframe_recyclable_waste = ttk.Labelframe(self.labelframe_total,text='可回收物',bootstyle="primary")
+        self.labelframe_recyclable_waste = ttk.Labelframe(self.labelframe_total,text='Recyclable Waste',bootstyle="primary")
         self.labelframe_recyclable_waste.grid(row=1,column=0,padx=5,pady=5,ipadx=2,ipady=2)
-        self.labelframe_other_waste = ttk.Labelframe(self.labelframe_total,text='其他垃圾',bootstyle="secondary")
+        self.labelframe_other_waste = ttk.Labelframe(self.labelframe_total,text='Other Waste',bootstyle="secondary")
         self.labelframe_other_waste.grid(row=2,column=0,padx=5,pady=5,ipadx=2,ipady=2)
-        self.labelframe_hazardous_waste = ttk.Labelframe(self.labelframe_total,text='有害垃圾',bootstyle="danger")
+        self.labelframe_hazardous_waste = ttk.Labelframe(self.labelframe_total,text='Hazardous Waste',bootstyle="danger")
         self.labelframe_hazardous_waste.grid(row=3,column=0,padx=5,pady=5,ipadx=2,ipady=2)
 
         # 各类垃圾图标
-        self.label_food_waste = ttk.Label(self.labelframe_food_waste,text="厨余垃圾",image=self.image_food_waste)
+        self.label_food_waste = ttk.Label(self.labelframe_food_waste,text="Food Waste",image=self.image_food_waste)
         self.label_food_waste.grid(row=0,column=0)
         self.label_recyclable_waste = ttk.Label(self.labelframe_recyclable_waste,image=self.image_recyclable_waste)
         self.label_recyclable_waste.grid(row=0,column=0)
@@ -194,13 +196,13 @@ class GUI:
         self.progressbar_hazardous_waste.grid(row=0,column=1)
 
         # 各类垃圾投放进度条数值
-        self.label_food_waste = ttk.Label(self.labelframe_food_waste,text='50',bootstyle="success")
+        self.label_food_waste = ttk.Label(self.labelframe_food_waste,text='0',bootstyle="success")
         self.label_food_waste.grid(row=0,column=2)
-        self.label_recyclable_waste = ttk.Label(self.labelframe_recyclable_waste,text='50',bootstyle="primary")
+        self.label_recyclable_waste = ttk.Label(self.labelframe_recyclable_waste,text='0',bootstyle="primary")
         self.label_recyclable_waste.grid(row=0,column=2)
-        self.label_other_waste = ttk.Label(self.labelframe_other_waste,text='50',bootstyle="secondary")
+        self.label_other_waste = ttk.Label(self.labelframe_other_waste,text='0',bootstyle="secondary")
         self.label_other_waste.grid(row=0,column=2)
-        self.label_hazardous_waste = ttk.Label(self.labelframe_hazardous_waste,text='50',bootstyle="danger")
+        self.label_hazardous_waste = ttk.Label(self.labelframe_hazardous_waste,text='0',bootstyle="danger")
         self.label_hazardous_waste.grid(row=0,column=2)
 
         # 分隔线
@@ -208,20 +210,20 @@ class GUI:
         self.separator_status.grid(row=0, column=1,rowspan=4,sticky='news')
 
         # 各类垃圾箱状态
-        self.button_food_waste_status = ttk.Button(self.labelframe_total,text='正常',bootstyle="success-outline",width=10)
+        self.button_food_waste_status = ttk.Button(self.labelframe_total,text='OK',bootstyle="success-outline",width=10)
         self.button_food_waste_status.grid(row=0,column=2,padx=5,pady=20,ipadx=2,ipady=2,sticky='news')
-        self.button_recyclable_waste_status = ttk.Button(self.labelframe_total,text='正常',bootstyle="success-outline")
+        self.button_recyclable_waste_status = ttk.Button(self.labelframe_total,text='OK',bootstyle="success-outline")
         self.button_recyclable_waste_status.grid(row=1,column=2,padx=5,pady=20,ipadx=2,ipady=2,sticky='news')
-        self.button_other_waste_status = ttk.Button(self.labelframe_total,text='正常',bootstyle="success-outline")
+        self.button_other_waste_status = ttk.Button(self.labelframe_total,text='OK',bootstyle="success-outline")
         self.button_other_waste_status.grid(row=2,column=2,padx=5,pady=20,ipadx=2,ipady=2,sticky='news')
-        self.button_hazardous_waste_status = ttk.Button(self.labelframe_total,text='正常',bootstyle="success-outline")
+        self.button_hazardous_waste_status = ttk.Button(self.labelframe_total,text='OK',bootstyle="success-outline")
         self.button_hazardous_waste_status.grid(row=3,column=2,padx=5,pady=20,ipadx=2,ipady=2,sticky='news')
     
     # 视频框
     def create_video_frame(self):
 
         # 视频框
-        self.labelframe_video = ttk.Labelframe(self.root, text="视频")
+        self.labelframe_video = ttk.Labelframe(self.root, text="Video")
         self.labelframe_video.grid(row=0, column=1,columnspan=2,padx=1,pady=1,ipadx=2,ipady=2,sticky='news')
 
         # 视频画布
@@ -254,7 +256,7 @@ class GUI:
             amounttotal=100,
             amountused=95.5,
             textright=" %",
-            subtext="置信度",
+            subtext="Conf",
             subtextstyle="success",
             meterthickness= 15,
         )
@@ -279,7 +281,7 @@ class GUI:
     def create_status_frame(self):
 
         # 状态框
-        self.labelframe_status = ttk.Labelframe(self.root, text="状态")
+        self.labelframe_status = ttk.Labelframe(self.root, text=" Status of Components")
         self.labelframe_status.grid(row=1, column=0,padx=1,pady=1,ipadx=2,ipady=2,sticky='news')
         self.label_status_camera = ttk.Label(self.labelframe_status,text='camera',font=('Arial', 30),bootstyle="success")
         self.label_status_camera.grid(row=0, column=0,padx=5,pady=5,ipadx=2,ipady=2,sticky='news')
@@ -295,20 +297,20 @@ class GUI:
         self.separator_status.grid(row=0, column=1,rowspan=4,sticky='news')
 
         # 状态指示
-        self.button_camera_status = ttk.Button(self.labelframe_status,text='工作中',bootstyle='success-outline',width=16)
+        self.button_camera_status = ttk.Button(self.labelframe_status,text='Working',bootstyle='success-outline',width=16)
         self.button_camera_status.grid(row=0, column=2,padx=5,pady=5,ipadx=2,ipady=2,sticky='news')
-        self.button_conveyor_status = ttk.Button(self.labelframe_status,text='工作中',bootstyle='success-outline')
+        self.button_conveyor_status = ttk.Button(self.labelframe_status,text='Working',bootstyle='success-outline')
         self.button_conveyor_status.grid(row=1, column=2,padx=5,pady=5,ipadx=2,ipady=2,sticky='news')
-        self.button_detector_status = ttk.Button(self.labelframe_status,text='工作中',bootstyle='success-outline')
+        self.button_detector_status = ttk.Button(self.labelframe_status,text='Working',bootstyle='success-outline')
         self.button_detector_status.grid(row=2, column=2,padx=5,pady=5,ipadx=2,ipady=2,sticky='news')
-        self.button_compactors_status = ttk.Button(self.labelframe_status,text='工作中',bootstyle='success-outline')
+        self.button_compactors_status = ttk.Button(self.labelframe_status,text='Working',bootstyle='success-outline')
         self.button_compactors_status.grid(row=3, column=2,padx=5,pady=5,ipadx=2,ipady=2,sticky='news')
     
     # 系统信息框
     def create_system_frame(self):
 
         # 系统信息框
-        self.labelframe_system = ttk.Labelframe(self.root, text="系统信息")
+        self.labelframe_system = ttk.Labelframe(self.root, text="System")
         self.labelframe_system.grid(row=1, column=2,padx=1,pady=1,ipadx=2,ipady=2,sticky='news')
 
         # CPU仪表盘
@@ -339,19 +341,19 @@ class GUI:
             padding=5,
             amounttotal=100,
             amountused=46.0,
-            textright=" ℃",
-            subtext="温度",
+            textright="°C",
+            subtext="Temp",
             subtextstyle="danger",
             meterthickness= 20
         )
         self.meter_temp.grid(row=0, column=1,sticky='news')
 
         # 内存标签框
-        self.labelframe_memory = ttk.LabelFrame(self.labelframe_system,text='内存',bootstyle="info")
+        self.labelframe_memory = ttk.LabelFrame(self.labelframe_system,text='Memory',bootstyle="info")
         self.labelframe_memory.grid(row=1, column=0,columnspan=2,padx=5,pady=5,ipadx=2,ipady=2,sticky='news')
 
         # 磁盘标签框
-        self.labelframe_disk = ttk.LabelFrame(self.labelframe_system,text='磁盘',bootstyle="info")
+        self.labelframe_disk = ttk.LabelFrame(self.labelframe_system,text='Disk',bootstyle="info")
         self.labelframe_disk.grid(row=2, column=0,columnspan=2,padx=5,pady=5,ipadx=2,ipady=2,sticky='news')
 
         # 内存占用条
@@ -418,7 +420,29 @@ class GUI:
             elif time.time() - self.compressor_t1 >= self.time_to_run:
                 stop_compress()
         
-      
+    def get_pi_system_info(self):
+        # CPU informatiom
+        CPU_temp = pi_system.getCPUtemperature()
+        CPU_usage = pi_system.getCPUuse()
+        
+        # RAM information
+        RAM_stats = pi_system.getRAMinfo()
+        RAM_total = int(RAM_stats[0]) 
+        RAM_used = int(RAM_stats[1])
+        
+        RAM_perc = round(RAM_used/RAM_total * 100,1)
+        
+        # Disk information
+        DISK_stats = pi_system.getDiskSpace()
+        DISK_perc = DISK_stats[3]
+        DISK_perc = DISK_perc[:-1]
+        DISK_perc = float(DISK_perc)
+
+        # Update info
+        self.meter_cpu.configure(amountused = CPU_usage)
+        self.meter_temp.configure(amountused = CPU_temp)
+        self.progressbar_memory.configure(value = RAM_perc)
+        self.progressbar_disk.configure(value = DISK_perc)
     #定时刷新
     def update_frame(self):
 
@@ -448,7 +472,7 @@ class GUI:
                 conf=0.25
                 )# 模型推理(预测)
 
-         
+        
 
         self.compressor_work()
 
@@ -476,16 +500,13 @@ class GUI:
                     self.label_class.config(text=self.wastes_cls[results[0].probs.top1],bootstyle='success')
                     self.label_num.config(text='1',bootstyle='success')
                     self.label_status.config(text='OK!',bootstyle='success')
-                    # self.tableview_history.insert_row(0,(self.waste_total,self.wastes_cls[results[0].probs.top1],1,'OK!'))
-                    # self.tableview_history.load_table_data()
-
-            else:
+                    conf_value = round(results[0].probs.top1conf.item() * 100,1)
+                    self.meter_conf.configure(amountused = conf_value) 
+                    self.tableview_history.insert_row(0,(self.waste_total,self.wastes_cls[results[0].probs.top1],1,'OK!'))
+                    self.tableview_history.load_table_data()
                 self.waste_exist_frame = 0
-
-            
-                
                 print(results[0].probs.top1)
-
+            
             if self.waste_exist_flag:
                 # 垃圾存在
                     # 传送带停止工作
@@ -539,7 +560,8 @@ class GUI:
         # 更新仪表盘(每120帧更新一次)
         if self.frames_count % self.num_frames == 0:
             self.frames_count = 1
-            self.meter_fps.configure(amountused=self.FPS)    
+            self.meter_fps.configure(amountused=self.FPS)  
+            self.get_pi_system_info()  
         else :
             self.frames_count += 1
         
@@ -574,6 +596,7 @@ class GUI:
         self.camera.release() # 释放摄像头
         self.video.release() # 释放视频
         gimbal_deinit() # 释放舵机
+        track_stop() # 停止传送带
         self.root.destroy() # 销毁窗口
         
     
