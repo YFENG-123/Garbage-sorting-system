@@ -94,34 +94,94 @@
       ```Linux
       pip install -r requirements.txt
       ```
-### 4.电控-GPIO
-  - #### 1.GPIO Pins  
-  -   GPIO模式为BCM:
-       - 超声模块使用引脚19、26
-       - GPIO_Compressor使用引脚23、24
-       - GPIO_Gimbal使用引脚12、13
-       - GPIO_Track使用引脚17、18、27、22
 
-   - #### 2.GPIO_Gimbal
+### 4.电控-GPIO 模块说明
 
-   - 使用gpiozero库的GPIO延时控制云台或者使用RPI.GPIO库写的四自由度云台控制
+#### 1. GPIO Pins
 
-   -   使用gpiozero库
-       - 设置校正值，将servo.value映射到一定范围调试代码，具体请看GPIO_Gimbal.py文件.
-       - 抖动大，转动角度较小,响应较慢
+- **GPIO 模式为 BCM**:
+  - **超声模块**使用引脚 `19`、`26`
+  - **GPIO_Compressor**使用引脚 `23`、`24`
+  - **GPIO_Gimbal**使用引脚 `12`、`13`
+  - **GPIO_Track**使用引脚 `17`、`18`、`27`、`22`
 
-   -   使用RPI.GPIO库
-       - 封装好了up(),down(),left(),right(),方便调用.  
-       - 转动角度封装在列表内，方便debug.    
-       - 针对gpiozero中出现的抖动，进行了消抖操作。舵机会发生抖动是因为精度原因，它自己认为还没有达到要求的角度，所以会不断的左右纠正，最终产生抖动，所以当舵机转到指定的角度后，sleep极短时间，就将当前的占空比清零，从而进行消抖.
+---
+
+#### 2. GPIO_Gimbal
+
+##### 使用 `RPI.GPIO` 库
+- 封装了 `up()`、`down()`、`left()`、`right()` 函数，方便调用,具体请看GPIO_Gimbal.py文件。
+- 转动角度封装在列表内，方便调试。
+- **消抖处理**:
+  - 针对 `gpiozero` 中出现的抖动问题，进行了消抖操作。
+  - 舵机抖动的原因是精度问题，舵机认为未达到指定角度，因此会不断左右纠正，导致抖动。
+  - 解决方法：当舵机转到指定角度后，`sleep` 极短时间，然后将当前占空比清零，从而消除抖动。
+
+##### 使用 `pigpio` 库(main.py最终调用)
+- 由于舵机抖动问题，参考官方文档修改为 `pigpio`，抖动问题得到解决。
+- 相关文件：
+  - `test_pigpio.py`
+
+###### 舵机参数配置
+```python
+SERVO_MIN = 500    # 0°脉宽（us）
+SERVO_MAX = 2500   # 270°脉宽（us）
+SERVO_MID = 1500   # 165°中点脉宽（us）
+```
+
+###### 舵机控制引脚
+```python
+SERVO1_PIN = 12  # 舵机1
+SERVO2_PIN = 13  # 舵机2
+```
+
+##### 主要函数
+- `gimbal_init()`: 初始化舵机，设置初始角度。
+- `set_angle(pin, angle)`: 通用角度设置函数，限制角度范围并设置脉宽。
+- `gimbal_work(cls)`: 根据输入类别执行前倾、后倾、左倾、右倾动作。
+- `gimbal_reset()`: 复位到中立位置。
+- `gimbal_deinit()`: 停止所有舵机信号并释放资源。
+
+---
+
+#### 3. GPIO_Track
+- **初赛未使用**
+- 使用 `RPI.GPIO` 库实现简单正转。
+- 由于树莓派 PWM IO 口有限，直接使用两种转速的直流电机实现两级履带差速运动。
+
+---
+
+#### 4. GPIO_Compressor
+
+##### 使用 `pigpio` 库
+- 通过 `pigpio` 库实现压缩机的控制和复位功能。
+- 相关文件：
+  - `pigpio_Compressor.py`
+
+##### 引脚定义
+```python
+Trig = 19  # 超声波发射端
+Echo = 26  # 超声波接收端
+INT5 = 23  # 压缩机启动
+INT6 = 24  # 复位控制
+```
+
+##### 主要函数
+- `compressor_init()`: 初始化压缩机和超声波模块的 GPIO 引脚。
+- `start_compress()`: 启动压缩机。
+- `stop_compress()`: 停止压缩机。
+- `reset_compress()`: 复位压缩机。
+- `compressor_deinit()`: 关闭所有 GPIO 输出并释放资源。
+
+##### 超声波测距模块
+- 使用 `UltrasonicSensor` 类实现超声波测距功能。
+- **主要方法**:
+  - `get_distance()`: 触发超声波测距并返回距离（单位：cm）。
+  - `cleanup()`: 清理资源，取消回调并关闭 `pigpio` 连接。
 
 
-
-   - #### 3.GPIO_Track
-   -    初赛未使用
-      - 使用RPI.GPIO库写的简单正转,
-      - 树莓派PWM IO口有限，直接使用两种转速的不同的直流电机实现两级履带差速运动
-
-   - #### 4.GPIO_Compressor
-
-     - 使用RPI.GPIO库写的简单正负极互换以及延时实现压缩
+#### 注意事项
+- 使用 `pigpio` 库前，请确保已安装并运行 `pigpiod` 守护进程：
+  ```bash
+  sudo pigpiod
+  ```
