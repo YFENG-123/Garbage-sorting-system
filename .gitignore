@@ -2,6 +2,7 @@
 .lgd-nfy0
 runs/
 .ruff_cache/
+test_compressor.py
 
 # Byte-compiled / optimized / DLL files
 __pycache__/

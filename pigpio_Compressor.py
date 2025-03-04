@@ -95,22 +95,38 @@ class UltrasonicSensor:
 #     distance = (t2 - t1) * 340 * 100 / 2
 #     return distance
 
-def compress_and_reset(time_to_run):
+# def compress_and_reset(time_to_run):
+#     print("检测到障碍物，开始压缩")
+#     pi.write(INT5, 1)  # 启动压缩机
+#     pi.write(INT6, 0)
+#     time.sleep(time_to_run)  # 持续压缩
+#     pi.write(INT5, 0)  # 停止压缩
+#     pi.write(INT6, 0)
+#     time.sleep(0.5)  # 等待一段时间
+
+#     print("压缩机构复位")
+#     pi.write(INT6, 1)  # 启动复位
+#     pi.write(INT5, 0)
+#     time.sleep(time_to_run)  # 持续复位
+#     pi.write(INT6, 0)
+#     pi.write(INT5, 0)
+#     time.sleep(0.5)  # 等待一段时间
+
+def start_compress():
     print("检测到障碍物，开始压缩")
     pi.write(INT5, 1)  # 启动压缩机
     pi.write(INT6, 0)
-    time.sleep(time_to_run)  # 持续压缩
+
+def stop_compress():
     pi.write(INT5, 0)  # 停止压缩
     pi.write(INT6, 0)
-    time.sleep(0.5)  # 等待一段时间
 
+def reset_compress():
     print("压缩机构复位")
     pi.write(INT6, 1)  # 启动复位
     pi.write(INT5, 0)
-    time.sleep(time_to_run)  # 持续复位
-    pi.write(INT6, 0)
-    pi.write(INT5, 0)
-    time.sleep(0.5)  # 等待一段时间
+
+
 
 def compressor_deinit():
     # 关闭所有GPIO输出
