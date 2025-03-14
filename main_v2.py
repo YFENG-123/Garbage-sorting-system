@@ -1,6 +1,7 @@
 
 #import gpiozero
 import time
+from datetime import datetime
 import cv2 
 import ttkbootstrap as ttk
 
@@ -10,7 +11,7 @@ from ultralytics import YOLO
 from PIL import Image, ImageTk  # 图像控件
 Image.CUBIC = Image.BICUBIC # 显式修复ttk包bug
 
-from test_pigpio import gimbal_init,gimbal_work,gimbal_reset,gimbal_deinit
+from test_pigpio_v2 import gimbal_init,gimbal_work,gimbal_reset,gimbal_deinit
 from GPIO_Track import track_init,track_start,track_stop
 from pigpio_Compressor import compressor_init,start_compress,stop_compress,reset_compress,UltrasonicSensor
 
@@ -36,7 +37,7 @@ class GUI:
 
     # 垃圾识别判断
     waste_exist_frame = 0 # 垃圾识别帧
-    waste_exist_frame_max = 2 # 垃圾识别帧阈值
+    waste_exist_frame_max = 10 # 垃圾识别帧阈值
     waste_exist_flag = True # 垃圾识别结果
     waste_total = 0 # 垃圾总数
 
@@ -46,11 +47,11 @@ class GUI:
     # 压缩机构
     compressor_work_status = 0 # 压缩机构工作状态
     safe_dis = 6.0  # 设置一个安全距离（单位：cm）  
-    time_to_run = 3  # 压缩和复位持续的时间（秒）
+    time_to_run = 7  # 压缩和复位持续的时间（秒）
     compressor_t1 = 0 # 压缩开始时间
 
     #摄像头图片参数
-    image_multiple = 40
+    image_multiple = 50
     image_width = 16*image_multiple
     image_height = 9*image_multiple
 
@@ -99,7 +100,7 @@ class GUI:
         self.root = ttk.Window()
         
         # 设置风格字体
-        style = ttk.Style("litera")
+        style = ttk.Style("solar")
         style.configure('TLabelframe.Label', font=("Arial",12))
         style.configure('custom.primary.Treeview.Heading', font=('Arial', 15))  # 设置表头字体
         style.configure('custom.primary.Treeview',rowheight=30, font=('Arial', 10))
@@ -108,7 +109,7 @@ class GUI:
         self.tableview_items_num = 12
         self.progressbar_length = 335
         self.tableview_column_width = 115
-        self.metersize = 175
+        self.metersize = 190
         self.waste_logo_size = 30
 
         # 读取各类垃圾图标
@@ -171,7 +172,7 @@ class GUI:
         
         # 标签框
         self.labelframe_total = ttk.Labelframe(self.root, text="Garbage Disposal Statistics")
-        self.labelframe_total.grid(row=1, column=1,rowspan=1,padx=1,pady=1,ipadx=2,ipady=2,sticky='news')
+        self.labelframe_total.grid(row=0, column=2,rowspan=1,padx=1,pady=1,ipadx=2,ipady=2,sticky='news')
 
         # 各类垃圾标签框
         self.labelframe_food_waste = ttk.Labelframe(self.labelframe_total,text='Food Waste',bootstyle="success")
@@ -232,7 +233,7 @@ class GUI:
 
         # 视频框
         self.labelframe_video = ttk.Labelframe(self.root, text="Video")
-        self.labelframe_video.grid(row=0, column=1,columnspan=2,padx=1,pady=1,ipadx=2,ipady=2,sticky='news')
+        self.labelframe_video.grid(row=0,rowspan=2,column=1,columnspan=1,padx=1,pady=1,ipadx=2,ipady=2,sticky='news')
 
         # 视频画布
         self.canvas_video = ttk.Canvas(self.labelframe_video, width=self.image_width, height=self.image_height)
@@ -242,7 +243,7 @@ class GUI:
         self.meter_fps = ttk.Meter(
             master=self.labelframe_video,
             bootstyle='success',
-            metersize=120,
+            metersize=150,
             arcoffset=-210,
             arcrange=240,
             padding=5,
@@ -253,13 +254,13 @@ class GUI:
             meterthickness= 25,
             stripethickness= 5,
         )
-        self.meter_fps.grid(row=0, column=4,sticky='news')
+        self.meter_fps.grid(row=3, column=0,sticky='news')
 
         # 置信度仪表盘
         self.meter_conf = ttk.Meter(
             master=self.labelframe_video,
             bootstyle='success',
-            metersize=120,
+            metersize=150,
             padding=5,
             amounttotal=100,
             amountused=95.5,
@@ -268,7 +269,7 @@ class GUI:
             subtextstyle="success",
             meterthickness= 15,
         )
-        self.meter_conf.grid(row=1, column=4,sticky='news')
+        self.meter_conf.grid(row=3, column=1,sticky='news')
 
         # 分类信息标签
         self.label_order = ttk.Label(self.labelframe_video,text='array',font=('Arial', 30),bootstyle="success")
@@ -283,7 +284,7 @@ class GUI:
 
         # 本轮投放时间
         self.label_time = ttk.Label(self.labelframe_video,text='00:00:00',font=('Arial', 30),bootstyle="success")
-        self.label_time.grid(row=2, column=4,padx=5,pady=5,ipadx=2,ipady=2,sticky='news')
+        self.label_time.grid(row=3, column=2,padx=5,pady=5,ipadx=2,ipady=2,sticky='news')
     
     # 状态框
     def create_status_frame(self):
@@ -354,15 +355,15 @@ class GUI:
             subtextstyle="danger",
             meterthickness= 20
         )
-        self.meter_temp.grid(row=0, column=1,sticky='news')
+        self.meter_temp.grid(row=1, column=0,sticky='news')
 
         # 内存标签框
         self.labelframe_memory = ttk.LabelFrame(self.labelframe_system,text='Memory',bootstyle="info")
-        self.labelframe_memory.grid(row=1, column=0,columnspan=2,padx=5,pady=5,ipadx=2,ipady=2,sticky='news')
+        self.labelframe_memory.grid(row=2, column=0,columnspan=2,padx=5,pady=5,ipadx=2,ipady=2,sticky='news')
 
         # 磁盘标签框
         self.labelframe_disk = ttk.LabelFrame(self.labelframe_system,text='Disk',bootstyle="info")
-        self.labelframe_disk.grid(row=2, column=0,columnspan=2,padx=5,pady=5,ipadx=2,ipady=2,sticky='news')
+        self.labelframe_disk.grid(row=3, column=0,columnspan=2,padx=5,pady=5,ipadx=2,ipady=2,sticky='news')
 
         # 内存占用条
         self.progressbar_memory = ttk.Progressbar(
@@ -605,6 +606,7 @@ class GUI:
         text_color = (0, 255, 0)  # 绿色
         text_position = (10, 30)  # 左上角位置
         cv2.putText(frame, fps_text, text_position, font, font_scale, text_color, font_thickness)
+
 
         # 将图像转换为tkinter格式
         rgb_image = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB) # 转换为RGB格式
