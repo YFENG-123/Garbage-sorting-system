@@ -10,7 +10,7 @@ from ultralytics import YOLO
 from PIL import Image, ImageTk  # 图像控件
 Image.CUBIC = Image.BICUBIC # 显式修复ttk包bug
 
-from test_pigpio import gimbal_init,gimbal_work,gimbal_reset,gimbal_deinit
+from gimbal_pigpio import gimbal_init,gimbal_work,gimbal_reset,gimbal_deinit
 from GPIO_Track import track_init,track_start,track_stop
 from pigpio_Compressor import compressor_init,start_compress,stop_compress,reset_compress,UltrasonicSensor
 
@@ -24,6 +24,9 @@ class GUI:
 
     # 视频播放速度
     speed = 4.0
+
+    # 模式切换时间
+    mode_transfrom_time = 30
 
     # 模式持续时间
     mode_t1 = 0
@@ -460,7 +463,7 @@ class GUI:
         camframe = cv2.flip(camframe, 1) # 反转图像
 
 
-        if self.mode and  ((time.time() - self.mode_t1) > 5.0):
+        if self.mode and  ((time.time() - self.mode_t1) > self.mode_transfrom_time):
             self.mode = 0
         
         # 获取摄像头或视频帧

@@ -11,17 +11,21 @@ from ultralytics import YOLO
 from PIL import Image, ImageTk  # 图像控件
 Image.CUBIC = Image.BICUBIC # 显式修复ttk包bug
 
-from test_pigpio_v2 import gimbal_init,gimbal_work,gimbal_reset,gimbal_deinit
+from gimbal_pigpio_v2 import gimbal_init,gimbal_work,gimbal_reset,gimbal_deinit
 from GPIO_Track import track_init,track_start,track_stop
 from pigpio_Compressor import compressor_init,start_compress,stop_compress,reset_compress,UltrasonicSensor
 
 import pi_system
+from count_time import get_elapsed_time
 
 
 class GUI:
     
     # 模式
     mode = 0
+
+    # 模式切换时间
+    mode_transfrom_time = 30
 
     # 视频播放速度
     speed = 4.0
@@ -37,7 +41,7 @@ class GUI:
 
     # 垃圾识别判断
     waste_exist_frame = 0 # 垃圾识别帧
-    waste_exist_frame_max = 10 # 垃圾识别帧阈值
+    waste_exist_frame_max = 8 # 垃圾识别帧阈值
     waste_exist_flag = True # 垃圾识别结果
     waste_total = 0 # 垃圾总数
 
@@ -46,7 +50,7 @@ class GUI:
 
     # 压缩机构
     compressor_work_status = 0 # 压缩机构工作状态
-    safe_dis = 6.0  # 设置一个安全距离（单位：cm）  
+    safe_dis = 5.0  # 设置一个安全距离（单位：cm）  
     time_to_run = 7  # 压缩和复位持续的时间（秒）
     compressor_t1 = 0 # 压缩开始时间
 
@@ -72,7 +76,7 @@ class GUI:
         
         print("载入模型...")
 
-        self.cls_ncnn_model = YOLO("model/wasteCls_v3_ncnn_model",task='classify')
+        self.cls_ncnn_model = YOLO("model/wasteCls_v4_ncnn_model",task='classify')
 
         # self.det_ncnn_model = YOLO("model/yolo11n_det_320_ncnn_model",task='detect')
         print("模型载入完毕")
@@ -84,7 +88,7 @@ class GUI:
         self.camera = cv2.VideoCapture(0) # cv初始化摄像头 
         if not self.camera.isOpened(): 
             self.camera = cv2.VideoCapture(1)
-        self.video = cv2.VideoCapture("Video.mp4")# cv初始化视频
+        self.video = cv2.VideoCapture("Video_v2.mp4")# cv初始化视频
         print("摄像头启动成功")
 
         #初始化GPIO
@@ -118,6 +122,7 @@ class GUI:
         self.image_other_waste = ImageTk.PhotoImage(Image.open("gui_images/other_waste_logo.png").resize((self.waste_logo_size,self.waste_logo_size)))
         self.image_hazardous_waste = ImageTk.PhotoImage(Image.open("gui_images/hazardous_waste_logo.png").resize((self.waste_logo_size,self.waste_logo_size)))
         self.wastes_cls = ['None','Food Waste','Hazardous Waste','Other Waste','Recyclable Waste']
+        self.waste_count = [0,0,0,0]
 
         # 界面编写
         self.interface()
@@ -452,6 +457,8 @@ class GUI:
         self.meter_temp.configure(amountused = CPU_temp)
         self.progressbar_memory.configure(value = RAM_perc)
         self.progressbar_disk.configure(value = DISK_perc)
+        self.label_memory.configure(text= RAM_perc)
+        self.label_disk.configure(text= DISK_perc)
     #定时刷新
     def update_frame(self):
 
@@ -461,7 +468,7 @@ class GUI:
         camframe = cv2.flip(camframe, 1) # 反转图像
 
 
-        if self.mode and  ((time.time() - self.mode_t1) > 5.0):
+        if self.mode and  ((time.time() - self.mode_t1) > self.mode_transfrom_time):
             self.mode = 0
         
         # 获取摄像头或视频帧
@@ -526,14 +533,27 @@ class GUI:
                     self.waste_exist_frame = 0
                     self.waste_exist_flag = True  
                     self.waste_total += 1        
+                    # 投放信息
                     self.label_order.config(text=str(self.waste_total),bootstyle='success') 
                     self.label_class.config(text=self.wastes_cls[results[0].probs.top1],bootstyle='success')
                     self.label_num.config(text='1',bootstyle='success')
                     self.label_status.config(text='OK!',bootstyle='success')
+                    # 置信率
                     conf_value = round(results[0].probs.top1conf.item() * 100,1)
                     self.meter_conf.configure(amountused = conf_value) 
+                    # 更新历史信息
                     self.tableview_history.insert_row(0,(self.waste_total,self.wastes_cls[results[0].probs.top1],1,'OK!'))
                     self.tableview_history.load_table_data()
+                    # 更新统计条
+                    self.waste_count[results[0].probs.top1-1] += 1
+                    self.progressbar_food_waste.configure(value=int(self.waste_count[0]/self.waste_total*100))
+                    self.progressbar_hazardous_waste.configure(value=int(self.waste_count[1]/self.waste_total*100))
+                    self.progressbar_other_waste.configure(value=int(self.waste_count[2]/self.waste_total*100))
+                    self.progressbar_recyclable_waste.configure(value=int(self.waste_count[3]/self.waste_total*100))
+                    self.label_food_waste.configure(text= self.waste_count[0])
+                    self.label_hazardous_waste.configure(text= self.waste_count[1])
+                    self.label_other_waste.configure(text= self.waste_count[2])
+                    self.label_recyclable_waste.configure(text= self.waste_count[3])
                 self.waste_exist_frame = 0
                 print(results[0].probs.top1)
             
@@ -558,12 +578,12 @@ class GUI:
 
         elif self.system_status == 1:
             # 系统处于垃圾倾倒状态
-            if time.time() - self.duoji_start_time >= 3.0 :
+            if time.time() - self.duoji_start_time >= 0.5 :
                     # 舵机工作时间大于3秒，舵机置位
                     t1 = time.time()
                     gimbal_reset()
                     print("time_reset:",time.time() - t1) 
-                    if time.time() - self.duoji_start_time >= 4.0 :
+                    if time.time() - self.duoji_start_time >= 1.0 :
                         # 舵机就位，垃圾倾倒完毕
                         self.button_camera_status.config(text='get ready',bootstyle='success-outline')
                         # 清除垃圾存在标志
@@ -606,6 +626,13 @@ class GUI:
         text_color = (0, 255, 0)  # 绿色
         text_position = (10, 30)  # 左上角位置
         cv2.putText(frame, fps_text, text_position, font, font_scale, text_color, font_thickness)
+
+        if self.mode == 1:
+            # 计算本轮投放时间
+            count_time = get_elapsed_time(self.mode_t1)
+            self.label_time.configure(text= count_time)
+        else :
+            self.label_time.configure(text= "00:00'00")
 
 
         # 将图像转换为tkinter格式
