@@ -60,7 +60,7 @@ class UltrasonicSensor:
         """触发超声波测距并返回距离"""
         # 发送触发信号
         self.pi.write(self.trig_pin, 1)
-        time.sleep(0.00005)  # 10us高电平
+        time.sleep(0.000010)  # 10us高电平
         self.pi.write(self.trig_pin, 0)
 
         # 等待测量完成
