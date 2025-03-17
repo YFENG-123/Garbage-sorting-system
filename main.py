@@ -40,11 +40,13 @@ class GUI:
 
     # 垃圾识别判断
     waste_exist_frame = 0 # 垃圾识别帧
-    waste_exist_frame_max = 3 # 垃圾识别帧阈值
+    waste_exist_frame_max = 4 # 垃圾识别帧阈值
     waste_exist_flag = True # 垃圾识别结果
     waste_total = 0 # 垃圾总数
     mean_conf = 0 # 平均概率
-    conf_threshold = 0.75 # 平均置信率
+    # 初始化一个字典来存储每个类别的概率总和
+    total_probs = {i: 0.0 for i in range(5)}  # 假设类别编号为 0 到 4
+    conf_threshold = 0.85 # 平均置信率
 
     # 舵机运行方向
     duoji_start_time = 0
@@ -54,7 +56,7 @@ class GUI:
     safe_dis = 5.0  # 设置一个安全距离（单位：cm）  
     time_to_run = 3  # 压缩和复位持续的时间（秒）
     compressor_t1 = 0 # 压缩开始时间
-    window_size = 5 # 均值滤波窗口大小
+    window_size = 10 # 均值滤波窗口大小
 
     #摄像头图片参数
     image_multiple = 40
@@ -125,6 +127,7 @@ class GUI:
         self.image_other_waste = ImageTk.PhotoImage(Image.open("gui_images/other_waste_logo.png").resize((self.waste_logo_size,self.waste_logo_size)))
         self.image_hazardous_waste = ImageTk.PhotoImage(Image.open("gui_images/hazardous_waste_logo.png").resize((self.waste_logo_size,self.waste_logo_size)))
         self.wastes_cls = ['None','Food Waste','Hazardous Waste','Other Waste','Recyclable Waste']
+        self.waste_count = [0,0,0,0]
 
         # 界面编写
         self.interface()
@@ -506,9 +509,18 @@ class GUI:
 
         if self.system_status == 0 and self.compressor_work_status == 0:
             # 系统处于等待检测状态
-            if results[0].probs.top1 != 0 :
+            if results[0].probs.top1 != 0 and results[0].probs.top1conf >= self.conf_threshold-0.3:
                 self.waste_exist_frame += 1
-                self.mean_conf += results[0].probs.top1conf.item()
+                if results[0].probs.top1conf >= self.conf_threshold:
+                    track_stop()
+                # 获取前五类别的序号和概率分布
+                top5_classes = results[0].probs.top5  # 前五类别的序号
+                top5_probs = results[0].probs.top5conf  # 前五类别的概率
+
+                # 将概率累加到对应的类别中
+                for class_id, prob in zip(top5_classes, top5_probs):
+                    self.total_probs[class_id] += prob.item()  # 将张量转换为 Python 标量并累加
+
                 for i in range(self.waste_exist_frame_max-1):
                     ret, camframe = self.camera.read()# cv读取摄像头
                     camframe = cv2.flip(camframe, 1) # 反转图像
@@ -530,9 +542,25 @@ class GUI:
                     if results[0].probs.top1 != 0 :
                         self.waste_exist_frame += 1
                         self.mean_conf += results[0].probs.top1conf.item()
+
+                        # 获取前五类别的序号和概率分布
+                        top5_classes = results[0].probs.top5  # 前五类别的序号
+                        top5_probs = results[0].probs.top5conf  # 前五类别的概率
+
+                        # 将概率累加到对应的类别中
+                        for class_id, prob in zip(top5_classes, top5_probs):
+                            self.total_probs[class_id] += prob.item()  # 将张量转换为 Python 标量并累加
                     
                 
-                if self.waste_exist_frame >= self.waste_exist_frame_max and self.mean_conf/self.waste_exist_frame_max >= self.conf_threshold:
+            if self.waste_exist_frame >= self.waste_exist_frame_max :
+
+                # 计算每个类别的平均概率
+                avg_probs = {i: self.total_probs[i] / self.waste_exist_frame_max for i in range(5)} 
+                # 获取概率最大的类别
+                max_class = max(avg_probs.items(), key=lambda x: x[1])[0]
+                max_prob = avg_probs[max_class]
+
+                if max_class != 0 and max_prob >= self.conf_threshold:
                     self.waste_exist_frame = 0
                     self.waste_exist_flag = True  
                     self.waste_total += 1        
@@ -557,9 +585,10 @@ class GUI:
                     self.label_hazardous_waste.configure(text= self.waste_count[1])
                     self.label_other_waste.configure(text= self.waste_count[2])
                     self.label_recyclable_waste.configure(text= self.waste_count[3])
-                self.waste_exist_frame = 0
-                self.mean_conf = 0
-                print(results[0].probs.top1)
+            self.waste_exist_frame = 0
+            self.mean_conf = 0
+            self.total_probs = {k: 0 for k in self.total_probs} #重置字典
+            print(results[0].probs.top1)
                     
             if self.waste_exist_flag:
                 # 垃圾存在
@@ -587,7 +616,7 @@ class GUI:
                     t1 = time.time()
                     gimbal_reset()
                     print("time_reset:",time.time() - t1) 
-                    if time.time() - self.duoji_start_time >= 1.0 :
+                    if time.time() - self.duoji_start_time >= 1.5 :
                         # 舵机就位，垃圾倾倒完毕
                         self.button_camera_status.config(text='get ready',bootstyle='success-outline')
                         # 清除垃圾存在标志
