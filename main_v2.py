@@ -17,6 +17,7 @@ from pigpio_Compressor import compressor_init,start_compress,stop_compress,reset
 
 import pi_system
 from count_time import get_elapsed_time
+from meanfilter import MeanFilter
 
 
 class GUI:
@@ -41,9 +42,11 @@ class GUI:
 
     # 垃圾识别判断
     waste_exist_frame = 0 # 垃圾识别帧
-    waste_exist_frame_max = 8 # 垃圾识别帧阈值
+    waste_exist_frame_max = 5 # 垃圾识别帧阈值
     waste_exist_flag = True # 垃圾识别结果
     waste_total = 0 # 垃圾总数
+    mean_conf = 0 # 平均概率
+    conf_threshold = 0.75 # 平均置信率
 
     # 舵机运行方向
     duoji_start_time = 0
@@ -53,6 +56,7 @@ class GUI:
     safe_dis = 5.0  # 设置一个安全距离（单位：cm）  
     time_to_run = 7  # 压缩和复位持续的时间（秒）
     compressor_t1 = 0 # 压缩开始时间
+    window_size = 5 # 均值滤波窗口大小
 
     #摄像头图片参数
     image_multiple = 50
@@ -95,6 +99,7 @@ class GUI:
         print("初始化GPIO...")
         gimbal_init()
         track_init()
+        self.meanFilter = MeanFilter(self.window_size)
         compressor_init()
         self.ultrasonic = UltrasonicSensor(trig_pin=19, echo_pin=26)
         track_start()
@@ -401,20 +406,21 @@ class GUI:
         self.label_disk.grid(row=0,column=1,sticky='news')
     
     def compressor_work(self):
-        barrier_dis = self.ultrasonic.get_distance() # 获取当前障碍物的距离  
+        barrier_dis = self.ultrasonic.get_distance() # 获取当前障碍物的距离
+        filtered_dis = self.meanFilter.update(barrier_dis) # 均值滤波得到滤波后结果  
         self.ultrasonic.print_time()
-        print(f"当前距离: {barrier_dis:.2f} cm")  
+        print(f"当前距离: {filtered_dis:.2f} cm")  
 
         if self.compressor_work_status == 0:
 
             # 当测得距离小于安全距离时，进行压缩  
-            if barrier_dis < self.safe_dis:  
+            if filtered_dis < self.safe_dis:  
                 self.button_recyclable_waste_status.config(text='FULL!!!',bootstyle='danger-outline')
-                self.button_conveyor_status.config(text='stop',bootstyle='danger-outline')
+                self.button_conveyor_status.config(text='STOP',bootstyle='danger-outline')
                 track_stop() # 传送带停止
-                self.button_camera_status.config(text='get ready',bootstyle='success-outline')
+                self.button_camera_status.config(text='Get Ready',bootstyle='success-outline')
                 gimbal_reset() # 舵机复位
-                self.button_compactors_status.config(text='working',bootstyle='warning-outline')
+                self.button_compactors_status.config(text='Working',bootstyle='warning-outline')
                 self.compressor_work_status = 1 # 压缩机构设为压缩状态
                 self.compressor_t1 = time.time()
                 start_compress()
@@ -499,7 +505,6 @@ class GUI:
             conf=0.25
         )  # 模型推理(预测)
 
-        
 
         self.compressor_work()
 
@@ -507,6 +512,7 @@ class GUI:
             # 系统处于等待检测状态
             if results[0].probs.top1 != 0 :
                 self.waste_exist_frame += 1
+                self.mean_conf += results[0].probs.top1conf.item()
                 for i in range(self.waste_exist_frame_max-1):
                     ret, camframe = self.camera.read()# cv读取摄像头
                     camframe = cv2.flip(camframe, 1) # 反转图像
@@ -527,9 +533,10 @@ class GUI:
                     )  # 模型推理(预测)
                     if results[0].probs.top1 != 0 :
                         self.waste_exist_frame += 1
+                        self.mean_conf += results[0].probs.top1conf.item()
                     
                 
-                if self.waste_exist_frame >= self.waste_exist_frame_max:
+                if self.waste_exist_frame >= self.waste_exist_frame_max and self.mean_conf/self.waste_exist_frame_max >= self.conf_threshold:
                     self.waste_exist_frame = 0
                     self.waste_exist_flag = True  
                     self.waste_total += 1        
@@ -555,6 +562,7 @@ class GUI:
                     self.label_other_waste.configure(text= self.waste_count[2])
                     self.label_recyclable_waste.configure(text= self.waste_count[3])
                 self.waste_exist_frame = 0
+                self.mean_conf = 0
                 print(results[0].probs.top1)
             
             if self.waste_exist_flag:
