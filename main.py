@@ -27,7 +27,7 @@ class GUI:
     speed = 4.0
 
     # 模式切换时间
-    mode_transfrom_time = 30
+    mode_transfrom_time = 10
 
     # 模式持续时间
     mode_t1 = 0
@@ -41,19 +41,18 @@ class GUI:
     # 垃圾识别判断
     waste_exist_frame = 0 # 垃圾识别帧
     waste_exist_frame_max = 4 # 垃圾识别帧阈值
-    waste_exist_flag = True # 垃圾识别结果
+    waste_exist_flag = False # 垃圾识别结果
     waste_total = 0 # 垃圾总数
-    mean_conf = 0 # 平均概率
     # 初始化一个字典来存储每个类别的概率总和
     total_probs = {i: 0.0 for i in range(5)}  # 假设类别编号为 0 到 4
-    conf_threshold = 0.85 # 平均置信率
+    conf_threshold = 0.85 # 置信阈值
 
     # 舵机运行方向
     duoji_start_time = 0
 
     # 压缩机构
     compressor_work_status = 0 # 压缩机构工作状态
-    safe_dis = 5.0  # 设置一个安全距离（单位：cm）  
+    safe_dis = [6.0,20.0]  # 设置一个安全距离（单位：cm）  
     time_to_run = 3  # 压缩和复位持续的时间（秒）
     compressor_t1 = 0 # 压缩开始时间
     window_size = 10 # 均值滤波窗口大小
@@ -67,7 +66,7 @@ class GUI:
     static_image_container = None
     
     #帧时间戳
-    num_frames = 70
+    num_frames = 90
     frames_count = 0
     time_stamp = 0.0
     last_time_stamp = 0.0
@@ -82,10 +81,8 @@ class GUI:
 
         self.cls_ncnn_model = YOLO("model/wasteCls_v3_ncnn_model",task='classify')
 
-        # self.det_ncnn_model = YOLO("model/yolo11n_det_320_ncnn_model",task='detect')
         print("模型载入完毕")
 
-    # ... (其余初始化代码保持不变)
 
         #启动摄像头（较费时），载入视频
         print("启动摄像头...")
@@ -205,13 +202,13 @@ class GUI:
         self.label_hazardous_waste.grid(row=0,column=0)
 
         # 各类垃圾投放统计进度条
-        self.progressbar_food_waste = ttk.Progressbar(self.labelframe_food_waste,value=50,bootstyle="success",length=self.progressbar_length)
+        self.progressbar_food_waste = ttk.Progressbar(self.labelframe_food_waste,value=0,bootstyle="success",length=self.progressbar_length)
         self.progressbar_food_waste.grid(row=0,column=1)
-        self.progressbar_recyclable_waste = ttk.Progressbar(self.labelframe_recyclable_waste,value=50,bootstyle="primary",length=self.progressbar_length)
+        self.progressbar_recyclable_waste = ttk.Progressbar(self.labelframe_recyclable_waste,value=0,bootstyle="primary",length=self.progressbar_length)
         self.progressbar_recyclable_waste.grid(row=0,column=1)
-        self.progressbar_other_waste = ttk.Progressbar(self.labelframe_other_waste,value=50,bootstyle="secondary",length=self.progressbar_length)
+        self.progressbar_other_waste = ttk.Progressbar(self.labelframe_other_waste,value=0,bootstyle="secondary",length=self.progressbar_length)
         self.progressbar_other_waste.grid(row=0,column=1)
-        self.progressbar_hazardous_waste = ttk.Progressbar(self.labelframe_hazardous_waste,value=50,bootstyle="danger",length=self.progressbar_length)
+        self.progressbar_hazardous_waste = ttk.Progressbar(self.labelframe_hazardous_waste,value=0,bootstyle="danger",length=self.progressbar_length)
         self.progressbar_hazardous_waste.grid(row=0,column=1)
 
         # 各类垃圾投放进度条数值
@@ -302,14 +299,15 @@ class GUI:
         # 状态框
         self.labelframe_status = ttk.Labelframe(self.root, text=" Status of Components")
         self.labelframe_status.grid(row=1, column=0,padx=1,pady=1,ipadx=2,ipady=2,sticky='news')
-        self.label_status_camera = ttk.Label(self.labelframe_status,text='camera',font=('Arial', 30),bootstyle="success")
+
+        self.label_status_camera = ttk.Label(self.labelframe_status,text='Camera',font=('Arial', 30),bootstyle="success")
         self.label_status_camera.grid(row=0, column=0,padx=5,pady=5,ipadx=2,ipady=2,sticky='news')
-        self.label_status_conveyor = ttk.Label(self.labelframe_status,text='conveyor',font=('Arial', 30),bootstyle="success")
+        self.label_status_conveyor = ttk.Label(self.labelframe_status,text='Conveyor',font=('Arial', 30),bootstyle="success")
         self.label_status_conveyor.grid(row=1, column=0,padx=5,pady=5,ipadx=2,ipady=2,sticky='news')
-        self.label_status_detector = ttk.Label(self.labelframe_status,text='detector',font=('Arial', 30),bootstyle="success")
+        self.label_status_detector = ttk.Label(self.labelframe_status,text='Detector',font=('Arial', 30),bootstyle="success")
         self.label_status_detector.grid(row=2, column=0,padx=5,pady=5,ipadx=2,ipady=2,sticky='news')
-        self.label_status_compactors = ttk.Label(self.labelframe_status,text='compactors',font=('Arial', 30),bootstyle="success")
-        self.label_status_compactors.grid(row=3, column=0,padx=5,pady=5,ipadx=2,ipady=2,sticky='news')
+        self.label_status_compressor = ttk.Label(self.labelframe_status,text='Compressor',font=('Arial', 30),bootstyle="success")
+        self.label_status_compressor.grid(row=3, column=0,padx=5,pady=5,ipadx=2,ipady=2,sticky='news')
 
         # 分隔线
         self.separator_status = ttk.Separator(self.labelframe_status,bootstyle='info',orient=VERTICAL)
@@ -322,8 +320,8 @@ class GUI:
         self.button_conveyor_status.grid(row=1, column=2,padx=5,pady=5,ipadx=2,ipady=2,sticky='news')
         self.button_detector_status = ttk.Button(self.labelframe_status,text='Working',bootstyle='success-outline')
         self.button_detector_status.grid(row=2, column=2,padx=5,pady=5,ipadx=2,ipady=2,sticky='news')
-        self.button_compactors_status = ttk.Button(self.labelframe_status,text='Working',bootstyle='success-outline')
-        self.button_compactors_status.grid(row=3, column=2,padx=5,pady=5,ipadx=2,ipady=2,sticky='news')
+        self.button_compressor_status = ttk.Button(self.labelframe_status,text='Working',bootstyle='success-outline')
+        self.button_compressor_status.grid(row=3, column=2,padx=5,pady=5,ipadx=2,ipady=2,sticky='news')
     
     # 系统信息框
     def create_system_frame(self):
@@ -406,32 +404,34 @@ class GUI:
         self.label_disk.grid(row=0,column=1,sticky='news')
     
     def compressor_work(self):
-        barrier_dis = self.ultrasonic.get_distance() # 获取当前障碍物的距离
-        filtered_dis = self.meanFilter.update(barrier_dis) # 均值滤波得到滤波后结果  
-        self.ultrasonic.print_time()
-        print(f"当前距离: {filtered_dis:.2f} cm") 
-
         if self.compressor_work_status == 0:
 
+            barrier_dis = self.ultrasonic.get_distance() # 获取当前障碍物的距离
+            filtered_dis = self.meanFilter.update(barrier_dis) # 均值滤波得到滤波后结果  
+            self.ultrasonic.print_time()
+            
+
             # 当测得距离小于安全距离时，进行压缩  
-            if barrier_dis < self.safe_dis:  
+            if filtered_dis < self.safe_dis[0] or filtered_dis > self.safe_dis[1]:  
                 self.button_recyclable_waste_status.config(text='FULL!!!',bootstyle='danger-outline')
                 self.button_conveyor_status.config(text='stop',bootstyle='danger-outline')
                 track_stop() # 传送带停止
                 self.button_camera_status.config(text='get ready',bootstyle='success-outline')
                 gimbal_reset() # 舵机复位
-                self.button_compactors_status.config(text='working',bootstyle='warning-outline')
+                self.button_compressor_status.config(text='working',bootstyle='warning-outline')
                 self.compressor_work_status = 1 # 压缩机构设为压缩状态
                 self.compressor_t1 = time.time()
                 start_compress()
-            # else:  
-            #     print("垃圾桶内空间足够，无需压缩")  
+                self.meanFilter.clear_window() # 清空滤波器
+                self.button_detector_status.config(text=f"{filtered_dis:.2f} cm",bootstyle='danger')
+            else:
+                self.button_detector_status.config(text=f"{filtered_dis:.2f} cm",bootstyle='success')
         
         else:
             if time.time() - self.compressor_t1 >= 2 * self.time_to_run + 0.5:
                 stop_compress()
                 self.compressor_work_status = 0
-                self.button_compactors_status.config(text='get ready',bootstyle='success-outline')
+                self.button_compressor_status.config(text='get ready',bootstyle='success-outline')
                 self.button_recyclable_waste_status.config(text='OK',bootstyle='success-outline')
                 self.button_conveyor_status.config(text='working',bootstyle='success-outline')
                 track_start()
@@ -463,6 +463,8 @@ class GUI:
         self.meter_temp.configure(amountused = CPU_temp)
         self.progressbar_memory.configure(value = RAM_perc)
         self.progressbar_disk.configure(value = DISK_perc)
+        self.label_memory.configure(text= RAM_perc)
+        self.label_disk.configure(text= DISK_perc)
     #定时刷新
     def update_frame(self):
 
@@ -493,7 +495,6 @@ class GUI:
         start_x = (width - min_dim) // 2  # 计算裁剪区域的起始 x 坐标
         start_y = (height - min_dim) // 2  # 计算裁剪区域的起始 y 坐标
         cropped_frame = camframe[start_y:start_y + min_dim, start_x:start_x + min_dim]  # 裁剪为中心正方形
-        # resized_frame = cv2.resize(cropped_frame, (1080, 1080), interpolation=cv2.INTER_LANCZOS4)  # 缩放为 1080x1080
 
         # 运行模型
         results = self.cls_ncnn_model.predict(
@@ -513,6 +514,7 @@ class GUI:
                 self.waste_exist_frame += 1
                 if results[0].probs.top1conf >= self.conf_threshold:
                     track_stop()
+
                 # 获取前五类别的序号和概率分布
                 top5_classes = results[0].probs.top5  # 前五类别的序号
                 top5_probs = results[0].probs.top5conf  # 前五类别的概率
@@ -541,7 +543,6 @@ class GUI:
                     )  # 模型推理(预测)
                     if results[0].probs.top1 != 0 :
                         self.waste_exist_frame += 1
-                        self.mean_conf += results[0].probs.top1conf.item()
 
                         # 获取前五类别的序号和概率分布
                         top5_classes = results[0].probs.top5  # 前五类别的序号
@@ -585,8 +586,9 @@ class GUI:
                     self.label_hazardous_waste.configure(text= self.waste_count[1])
                     self.label_other_waste.configure(text= self.waste_count[2])
                     self.label_recyclable_waste.configure(text= self.waste_count[3])
+            else:
+                track_start()
             self.waste_exist_frame = 0
-            self.mean_conf = 0
             self.total_probs = {k: 0 for k in self.total_probs} #重置字典
             print(results[0].probs.top1)
                     
@@ -647,9 +649,6 @@ class GUI:
             self.get_pi_system_info()  
         else :
             self.frames_count += 1
-        
-        # gui.tableview_history.insert_row(0,('test',1))
-        # gui.tableview_history.load_table_data()
     
         # 在图像左上角添加FPS文本
         fps_text = f"FPS: {self.FPS:.2f}"
@@ -677,8 +676,6 @@ class GUI:
         # 显示图像
         self.canvas_video.create_image(0, 0, anchor='nw', image=tk_image) # 显示图像
         self.static_image_container = tk_image # 将图像转换为tkinter格式，并存入静态变量中
-
-        
 
         self.root.after(1, self.update_frame)  # 每1毫秒更新一次图像
 

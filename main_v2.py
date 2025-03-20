@@ -26,7 +26,7 @@ class GUI:
     mode = 0
 
     # 模式切换时间
-    mode_transfrom_time = 30
+    mode_transfrom_time = 10
 
     # 视频播放速度
     speed = 4.0
@@ -43,17 +43,18 @@ class GUI:
     # 垃圾识别判断
     waste_exist_frame = 0 # 垃圾识别帧
     waste_exist_frame_max = 5 # 垃圾识别帧阈值
-    waste_exist_flag = True # 垃圾识别结果
+    waste_exist_flag = False # 垃圾识别结果
     waste_total = 0 # 垃圾总数
-    mean_conf = 0 # 平均概率
-    conf_threshold = 0.75 # 平均置信率
+    # 初始化一个字典来存储每个类别的概率总和
+    total_probs = {i: 0.0 for i in range(5)}  # 假设类别编号为 0 到 4
+    conf_threshold = 0.85 # 置信阈值
 
     # 舵机运行方向
     duoji_start_time = 0
 
     # 压缩机构
     compressor_work_status = 0 # 压缩机构工作状态
-    safe_dis = 5.0  # 设置一个安全距离（单位：cm）  
+    safe_dis = [6.0,20.0]  # 设置一个安全距离（单位：cm）  
     time_to_run = 7  # 压缩和复位持续的时间（秒）
     compressor_t1 = 0 # 压缩开始时间
     window_size = 5 # 均值滤波窗口大小
@@ -406,26 +407,25 @@ class GUI:
         self.label_disk.grid(row=0,column=1,sticky='news')
     
     def compressor_work(self):
-        barrier_dis = self.ultrasonic.get_distance() # 获取当前障碍物的距离
-        filtered_dis = self.meanFilter.update(barrier_dis) # 均值滤波得到滤波后结果  
-        self.ultrasonic.print_time()
-        print(f"当前距离: {filtered_dis:.2f} cm")  
-
         if self.compressor_work_status == 0:
 
+            barrier_dis = self.ultrasonic.get_distance() # 获取当前障碍物的距离
+            filtered_dis = self.meanFilter.update(barrier_dis) # 均值滤波得到滤波后结果  
+            self.ultrasonic.print_time()
+            print(f"当前距离: {filtered_dis:.2f} cm") 
+
             # 当测得距离小于安全距离时，进行压缩  
-            if filtered_dis < self.safe_dis:  
+            if filtered_dis < self.safe_dis[0] or filtered_dis > self.safe_dis[1]:  
                 self.button_recyclable_waste_status.config(text='FULL!!!',bootstyle='danger-outline')
-                self.button_conveyor_status.config(text='STOP',bootstyle='danger-outline')
+                self.button_conveyor_status.config(text='stop',bootstyle='danger-outline')
                 track_stop() # 传送带停止
-                self.button_camera_status.config(text='Get Ready',bootstyle='success-outline')
+                self.button_camera_status.config(text='get ready',bootstyle='success-outline')
                 gimbal_reset() # 舵机复位
-                self.button_compactors_status.config(text='Working',bootstyle='warning-outline')
+                self.button_compactors_status.config(text='working',bootstyle='warning-outline')
                 self.compressor_work_status = 1 # 压缩机构设为压缩状态
                 self.compressor_t1 = time.time()
                 start_compress()
-            # else:  
-            #     print("垃圾桶内空间足够，无需压缩")  
+                self.meanFilter.clear_window() # 清空滤波器
         
         else:
             if time.time() - self.compressor_t1 >= 2 * self.time_to_run + 0.5:
@@ -510,9 +510,19 @@ class GUI:
 
         if self.system_status == 0 and self.compressor_work_status == 0:
             # 系统处于等待检测状态
-            if results[0].probs.top1 != 0 :
+            if results[0].probs.top1 != 0 and results[0].probs.top1conf >= self.conf_threshold-0.3:
                 self.waste_exist_frame += 1
-                self.mean_conf += results[0].probs.top1conf.item()
+                if results[0].probs.top1conf >= self.conf_threshold:
+                    track_stop()
+
+                # 获取前五类别的序号和概率分布
+                top5_classes = results[0].probs.top5  # 前五类别的序号
+                top5_probs = results[0].probs.top5conf  # 前五类别的概率
+
+                # 将概率累加到对应的类别中
+                for class_id, prob in zip(top5_classes, top5_probs):
+                    self.total_probs[class_id] += prob.item()  # 将张量转换为 Python 标量并累加
+
                 for i in range(self.waste_exist_frame_max-1):
                     ret, camframe = self.camera.read()# cv读取摄像头
                     camframe = cv2.flip(camframe, 1) # 反转图像
@@ -533,10 +543,25 @@ class GUI:
                     )  # 模型推理(预测)
                     if results[0].probs.top1 != 0 :
                         self.waste_exist_frame += 1
-                        self.mean_conf += results[0].probs.top1conf.item()
+
+                        # 获取前五类别的序号和概率分布
+                        top5_classes = results[0].probs.top5  # 前五类别的序号
+                        top5_probs = results[0].probs.top5conf  # 前五类别的概率
+
+                        # 将概率累加到对应的类别中
+                        for class_id, prob in zip(top5_classes, top5_probs):
+                            self.total_probs[class_id] += prob.item()  # 将张量转换为 Python 标量并累加
                     
                 
-                if self.waste_exist_frame >= self.waste_exist_frame_max and self.mean_conf/self.waste_exist_frame_max >= self.conf_threshold:
+            if self.waste_exist_frame >= self.waste_exist_frame_max :
+
+                # 计算每个类别的平均概率
+                avg_probs = {i: self.total_probs[i] / self.waste_exist_frame_max for i in range(5)} 
+                # 获取概率最大的类别
+                max_class = max(avg_probs.items(), key=lambda x: x[1])[0]
+                max_prob = avg_probs[max_class]
+
+                if max_class != 0 and max_prob >= self.conf_threshold:
                     self.waste_exist_frame = 0
                     self.waste_exist_flag = True  
                     self.waste_total += 1        
@@ -561,9 +586,11 @@ class GUI:
                     self.label_hazardous_waste.configure(text= self.waste_count[1])
                     self.label_other_waste.configure(text= self.waste_count[2])
                     self.label_recyclable_waste.configure(text= self.waste_count[3])
-                self.waste_exist_frame = 0
-                self.mean_conf = 0
-                print(results[0].probs.top1)
+            else:
+                track_start()
+            self.waste_exist_frame = 0
+            self.total_probs = {k: 0 for k in self.total_probs} #重置字典
+            print(results[0].probs.top1)
             
             if self.waste_exist_flag:
                 # 垃圾存在

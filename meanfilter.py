@@ -15,6 +15,10 @@ class MeanFilter:
         mean_value = sum(self.window) / len(self.window)
         
         return mean_value
+    
+    def clear_window(self):
+        # 清空窗口
+        self.window = []
 
 # 示例使用
 if __name__ == "__main__":
