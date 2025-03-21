@@ -57,7 +57,7 @@ class GUI:
     safe_dis = [6.0,20.0]  # 设置一个安全距离（单位：cm）  
     time_to_run = 7  # 压缩和复位持续的时间（秒）
     compressor_t1 = 0 # 压缩开始时间
-    window_size = 5 # 均值滤波窗口大小
+    window_size = 25 # 均值滤波窗口大小
 
     #摄像头图片参数
     image_multiple = 50
@@ -81,9 +81,8 @@ class GUI:
         
         print("载入模型...")
 
-        self.cls_ncnn_model = YOLO("model/wasteCls_v4_ncnn_model",task='classify')
+        self.cls_ncnn_model = YOLO("model/wasteCls_v4_3_ncnn_model",task='classify')
 
-        # self.det_ncnn_model = YOLO("model/yolo11n_det_320_ncnn_model",task='detect')
         print("模型载入完毕")
 
     # ... (其余初始化代码保持不变)
@@ -110,9 +109,9 @@ class GUI:
         
         # 初始化超声波传感器
         self.sensor_rw = UltrasonicSensor(trig_pin=19, echo_pin=26)
-        self.sensor_fw = UltrasonicSensor(trig_pin=4, echo_pin=25)
+        self.sensor_ow = UltrasonicSensor(trig_pin=4, echo_pin=25)
         self.sensor_hw = UltrasonicSensor(trig_pin=5, echo_pin=6)
-        self.sensor_ow = UltrasonicSensor(trig_pin=20, echo_pin=21)
+        self.sensor_fw = UltrasonicSensor(trig_pin=20, echo_pin=21)
 
         track_start()
         print("GPIO启动成功")
@@ -217,13 +216,13 @@ class GUI:
         self.label_hazardous_waste.grid(row=0,column=0)
 
         # 各类垃圾投放统计进度条
-        self.progressbar_food_waste = ttk.Progressbar(self.labelframe_food_waste,value=50,bootstyle="success",length=self.progressbar_length)
+        self.progressbar_food_waste = ttk.Progressbar(self.labelframe_food_waste,value=0,bootstyle="success",length=self.progressbar_length)
         self.progressbar_food_waste.grid(row=0,column=1)
-        self.progressbar_recyclable_waste = ttk.Progressbar(self.labelframe_recyclable_waste,value=50,bootstyle="primary",length=self.progressbar_length)
+        self.progressbar_recyclable_waste = ttk.Progressbar(self.labelframe_recyclable_waste,value=0,bootstyle="primary",length=self.progressbar_length)
         self.progressbar_recyclable_waste.grid(row=0,column=1)
-        self.progressbar_other_waste = ttk.Progressbar(self.labelframe_other_waste,value=50,bootstyle="secondary",length=self.progressbar_length)
+        self.progressbar_other_waste = ttk.Progressbar(self.labelframe_other_waste,value=0,bootstyle="secondary",length=self.progressbar_length)
         self.progressbar_other_waste.grid(row=0,column=1)
-        self.progressbar_hazardous_waste = ttk.Progressbar(self.labelframe_hazardous_waste,value=50,bootstyle="danger",length=self.progressbar_length)
+        self.progressbar_hazardous_waste = ttk.Progressbar(self.labelframe_hazardous_waste,value=0,bootstyle="danger",length=self.progressbar_length)
         self.progressbar_hazardous_waste.grid(row=0,column=1)
 
         # 各类垃圾投放进度条数值
@@ -320,8 +319,8 @@ class GUI:
         self.label_status_conveyor.grid(row=1, column=0,padx=5,pady=5,ipadx=2,ipady=2,sticky='news')
         self.label_status_detector = ttk.Label(self.labelframe_status,text='detector',font=('Arial', 30),bootstyle="success")
         self.label_status_detector.grid(row=2, column=0,padx=5,pady=5,ipadx=2,ipady=2,sticky='news')
-        self.label_status_compactors = ttk.Label(self.labelframe_status,text='compactors',font=('Arial', 30),bootstyle="success")
-        self.label_status_compactors.grid(row=3, column=0,padx=5,pady=5,ipadx=2,ipady=2,sticky='news')
+        self.label_status_compressor = ttk.Label(self.labelframe_status,text='compressor',font=('Arial', 30),bootstyle="success")
+        self.label_status_compressor.grid(row=3, column=0,padx=5,pady=5,ipadx=2,ipady=2,sticky='news')
 
         # 分隔线
         self.separator_status = ttk.Separator(self.labelframe_status,bootstyle='info',orient=VERTICAL)
@@ -334,8 +333,8 @@ class GUI:
         self.button_conveyor_status.grid(row=1, column=2,padx=5,pady=5,ipadx=2,ipady=2,sticky='news')
         self.button_detector_status = ttk.Button(self.labelframe_status,text='Working',bootstyle='success-outline')
         self.button_detector_status.grid(row=2, column=2,padx=5,pady=5,ipadx=2,ipady=2,sticky='news')
-        self.button_compactors_status = ttk.Button(self.labelframe_status,text='Working',bootstyle='success-outline')
-        self.button_compactors_status.grid(row=3, column=2,padx=5,pady=5,ipadx=2,ipady=2,sticky='news')
+        self.button_compressor_status = ttk.Button(self.labelframe_status,text='Working',bootstyle='success-outline')
+        self.button_compressor_status.grid(row=3, column=2,padx=5,pady=5,ipadx=2,ipady=2,sticky='news')
 
         # 将传感器对象与对应的滤波器对象、状态按钮组成元组列表
         self.sensor_filter_status_pairs = [
@@ -427,9 +426,10 @@ class GUI:
         if self.compressor_work_status == 0:
 
             barrier_dis = self.sensor_rw.get_distance() # 获取当前障碍物的距离
+            print("当前距离",barrier_dis)
             filtered_dis = self.meanFilter_rw.update(barrier_dis) # 均值滤波得到滤波后结果  
             self.sensor_rw.print_time()
-            print(f"当前距离: {filtered_dis:.2f} cm") 
+            
 
             # 当测得距离小于安全距离时，进行压缩  
             if filtered_dis < self.safe_dis[0] or filtered_dis > self.safe_dis[1]:  
@@ -438,17 +438,20 @@ class GUI:
                 track_stop() # 传送带停止
                 self.button_camera_status.config(text='get ready',bootstyle='success-outline')
                 gimbal_reset() # 舵机复位
-                self.button_compactors_status.config(text='working',bootstyle='warning-outline')
+                self.button_compressor_status.config(text='working',bootstyle='warning-outline')
                 self.compressor_work_status = 1 # 压缩机构设为压缩状态
                 self.compressor_t1 = time.time()
                 start_compress()
                 self.meanFilter_rw.clear_window() # 清空滤波器
+                self.button_recyclable_waste_status.config(text=f"{filtered_dis:.2f} FULL!!!",bootstyle='danger')
+            else:
+                self.button_recyclable_waste_status.config(text=f"{filtered_dis:.2f} OK",bootstyle='success-outline')
         
         else:
             if time.time() - self.compressor_t1 >= 2 * self.time_to_run + 0.5:
                 stop_compress()
                 self.compressor_work_status = 0
-                self.button_compactors_status.config(text='get ready',bootstyle='success-outline')
+                self.button_compressor_status.config(text='get ready',bootstyle='success-outline')
                 self.button_recyclable_waste_status.config(text='OK',bootstyle='success-outline')
                 self.button_conveyor_status.config(text='working',bootstyle='success-outline')
                 track_start()
@@ -464,9 +467,9 @@ class GUI:
             barrier_dis = sensor.get_distance()          # 获取传感器数据
             filtered_dis = mean_filter.update(barrier_dis)  # 存储滤波结果
             if filtered_dis < self.safe_dis[0] or filtered_dis > self.safe_dis[1]: 
-                status.config(text=f"{filtered_dis:.2f} cm",bootstyle='danger')
+                status.config(text=f"{filtered_dis:.2f} FULL!!!",bootstyle='danger')
             else: 
-                status.config(text=f"{filtered_dis:.2f} cm",bootstyle='success-outline')
+                status.config(text=f"{filtered_dis:.2f} OK",bootstyle='success-outline')
 
     def get_pi_system_info(self):
         # CPU informatiom
@@ -535,6 +538,7 @@ class GUI:
 
 
         self.compressor_work()
+        self.get_sensor_info()
 
         if self.system_status == 0 and self.compressor_work_status == 0:
             # 系统处于等待检测状态

@@ -64,7 +64,7 @@ class UltrasonicSensor:
         self.pi.write(self.trig_pin, 0)
 
         # 等待测量完成
-        time.sleep(0.05)  # 等待50ms，确保测量完成
+        time.sleep(0.0001)  # 等待100us，确保测量完成
         return self.distance
 
     def cleanup(self):

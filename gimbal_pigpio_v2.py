@@ -30,13 +30,14 @@ def set_angle(pin, angle):
 
 def gimbal_work(cls):
 
-    if cls == 0:  # 前倾动作
+    if cls == 1:  # 前倾动作
         print("前倾")
-        set_angle(SERVO2_PIN, 0)  # 舵机2向前下压
+        set_angle(SERVO2_PIN, 0)
+
         
-    elif cls == 2:  # 后倾动作
+    elif cls == 0:  # 后倾动作
         print("后倾")
-        set_angle(SERVO2_PIN, 105)  # 舵机2向后仰
+        set_angle(SERVO2_PIN, 115)  # 舵机2向后仰
 
     elif cls == 3:  # 左倾动作
         print("左倾")
@@ -46,7 +47,7 @@ def gimbal_work(cls):
         sleep(0.5)
         set_angle(SERVO2_PIN, 0)
         
-    elif cls == 1:  # 右倾动作
+    elif cls == 2:  # 右倾动作
         print("右倾")
         # 舵机1右转90度（不低于0°限制）
 
