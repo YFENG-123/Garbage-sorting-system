@@ -100,9 +100,20 @@ class GUI:
         print("初始化GPIO...")
         gimbal_init()
         track_init()
-        self.meanFilter = MeanFilter(self.window_size)
         compressor_init()
-        self.ultrasonic = UltrasonicSensor(trig_pin=19, echo_pin=26)
+        # 初始化滤波器
+        self.meanFilter_rw = MeanFilter(self.window_size)
+        self.meanFilter_fw = MeanFilter(self.window_size)
+        self.meanFilter_hw = MeanFilter(self.window_size)
+        self.meanFilter_ow = MeanFilter(self.window_size)
+
+        
+        # 初始化超声波传感器
+        self.sensor_rw = UltrasonicSensor(trig_pin=19, echo_pin=26)
+        self.sensor_fw = UltrasonicSensor(trig_pin=4, echo_pin=25)
+        self.sensor_hw = UltrasonicSensor(trig_pin=5, echo_pin=6)
+        self.sensor_ow = UltrasonicSensor(trig_pin=20, echo_pin=21)
+
         track_start()
         print("GPIO启动成功")
         
@@ -325,7 +336,13 @@ class GUI:
         self.button_detector_status.grid(row=2, column=2,padx=5,pady=5,ipadx=2,ipady=2,sticky='news')
         self.button_compactors_status = ttk.Button(self.labelframe_status,text='Working',bootstyle='success-outline')
         self.button_compactors_status.grid(row=3, column=2,padx=5,pady=5,ipadx=2,ipady=2,sticky='news')
-    
+
+        # 将传感器对象与对应的滤波器对象、状态按钮组成元组列表
+        self.sensor_filter_status_pairs = [
+            (self.sensor_fw, self.meanFilter_fw,self.button_food_waste_status),
+            (self.sensor_hw, self.meanFilter_hw,self.button_hazardous_waste_status),
+            (self.sensor_ow, self.meanFilter_ow,self.button_other_waste_status)
+        ]
     # 系统信息框
     def create_system_frame(self):
 
@@ -409,9 +426,9 @@ class GUI:
     def compressor_work(self):
         if self.compressor_work_status == 0:
 
-            barrier_dis = self.ultrasonic.get_distance() # 获取当前障碍物的距离
-            filtered_dis = self.meanFilter.update(barrier_dis) # 均值滤波得到滤波后结果  
-            self.ultrasonic.print_time()
+            barrier_dis = self.sensor_rw.get_distance() # 获取当前障碍物的距离
+            filtered_dis = self.meanFilter_rw.update(barrier_dis) # 均值滤波得到滤波后结果  
+            self.sensor_rw.print_time()
             print(f"当前距离: {filtered_dis:.2f} cm") 
 
             # 当测得距离小于安全距离时，进行压缩  
@@ -425,7 +442,7 @@ class GUI:
                 self.compressor_work_status = 1 # 压缩机构设为压缩状态
                 self.compressor_t1 = time.time()
                 start_compress()
-                self.meanFilter.clear_window() # 清空滤波器
+                self.meanFilter_rw.clear_window() # 清空滤波器
         
         else:
             if time.time() - self.compressor_t1 >= 2 * self.time_to_run + 0.5:
@@ -440,6 +457,17 @@ class GUI:
             elif time.time() - self.compressor_t1 >= self.time_to_run:
                 stop_compress()
         
+    def get_sensor_info(self):
+        
+        # 使用循环遍历每个传感器-滤波器对
+        for sensor, mean_filter,status in self.sensor_filter_status_pairs:
+            barrier_dis = sensor.get_distance()          # 获取传感器数据
+            filtered_dis = mean_filter.update(barrier_dis)  # 存储滤波结果
+            if filtered_dis < self.safe_dis[0] or filtered_dis > self.safe_dis[1]: 
+                status.config(text=f"{filtered_dis:.2f} cm",bootstyle='danger')
+            else: 
+                status.config(text=f"{filtered_dis:.2f} cm",bootstyle='success-outline')
+
     def get_pi_system_info(self):
         # CPU informatiom
         CPU_temp = pi_system.getCPUtemperature()
