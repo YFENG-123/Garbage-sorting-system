@@ -47,14 +47,14 @@ class GUI:
     waste_total = 0 # 垃圾总数
     # 初始化一个字典来存储每个类别的概率总和
     total_probs = {i: 0.0 for i in range(5)}  # 假设类别编号为 0 到 4
-    conf_threshold = 0.85 # 置信阈值
+    conf_threshold = 0.60 # 置信阈值
 
     # 舵机运行方向
     duoji_start_time = 0
 
     # 压缩机构
     compressor_work_status = 0 # 压缩机构工作状态
-    safe_dis = [6.0,20.0]  # 设置一个安全距离（单位：cm）  
+    safe_dis = [5.5,20.0]  # 设置一个安全距离（单位：cm）  
     time_to_run = 7  # 压缩和复位持续的时间（秒）
     compressor_t1 = 0 # 压缩开始时间
     window_size = 25 # 均值滤波窗口大小
@@ -68,7 +68,7 @@ class GUI:
     static_image_container = None
     
     #帧时间戳
-    num_frames = 70
+    num_frames = 140
     frames_count = 0
     time_stamp = 0.0
     last_time_stamp = 0.0
@@ -92,6 +92,8 @@ class GUI:
         self.camera = cv2.VideoCapture(0) # cv初始化摄像头 
         if not self.camera.isOpened(): 
             self.camera = cv2.VideoCapture(1)
+            if not self.camera.isOpened(): 
+                self.camera = cv2.VideoCapture(2)
         self.video = cv2.VideoCapture("Video_v2.mp4")# cv初始化视频
         print("摄像头启动成功")
 
@@ -583,7 +585,8 @@ class GUI:
                         # 将概率累加到对应的类别中
                         for class_id, prob in zip(top5_classes, top5_probs):
                             self.total_probs[class_id] += prob.item()  # 将张量转换为 Python 标量并累加
-                    
+            
+            
                 
             if self.waste_exist_frame >= self.waste_exist_frame_max :
 
@@ -667,6 +670,7 @@ class GUI:
                         # 系统切换到等待检测状态
                         self.system_status = 0
 
+        
         # 计算FPS
         self.time_stamp = time.time()
         loop_time = self.time_stamp - self.last_time_stamp
