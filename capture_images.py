@@ -21,7 +21,7 @@ capture_interval = 0.16
 
 # 设置舵机运动的随机时间范围（秒）
 min_random_time = 0.4  # 最小随机时间
-max_random_time = 1.0  # 最大随机时间
+max_random_time = 0.9  # 最大随机时间
 
 
 # 舵机运动方向控制
