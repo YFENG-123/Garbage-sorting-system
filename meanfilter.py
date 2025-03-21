@@ -1,7 +1,7 @@
 class MeanFilter:
     def __init__(self, window_size):
         self.window_size = window_size
-        self.window = []
+        self.window = [11.0,11.0,11.0,11.0,11.0]
 
     def update(self, new_value):
         # 将新值添加到窗口
@@ -18,7 +18,7 @@ class MeanFilter:
     
     def clear_window(self):
         # 清空窗口
-        self.window = []
+        self.window = [11.0,11.0,11.0,11.0,11.0]
 
 # 示例使用
 if __name__ == "__main__":
