@@ -78,6 +78,8 @@ class GUI:
     def __init__(self):
         #正反转计数
         self.count = 0
+        self.erase_ready = False
+        self.blank_count = 0
 
         #载入模型
         
@@ -541,7 +543,7 @@ class GUI:
         self.compressor_work()
         self.get_sensor_info()
 
-        if self.system_status == 0 and self.compressor_work_status == 0:
+        if (self.system_status == 0 and self.compressor_work_status == 0)or self.erase_ready is True:
             # 系统处于等待检测状态
             if results[0].probs.top1 != 0 and results[0].probs.top1conf >= self.conf_threshold-0.3:
                 self.waste_exist_frame += 1
@@ -584,7 +586,12 @@ class GUI:
                         # 将概率累加到对应的类别中
                         for class_id, prob in zip(top5_classes, top5_probs):
                             self.total_probs[class_id] += prob.item()  # 将张量转换为 Python 标量并累加
-                    
+                    else:
+                        self.blank_count += 1
+                        
+            if self.blank_count > 5:
+                self.waste_exist_flag = False
+                self.blank_count = 0
                 
             if self.waste_exist_frame >= self.waste_exist_frame_max :
 
@@ -661,7 +668,7 @@ class GUI:
                         # 舵机就位，垃圾倾倒完毕
                         self.button_camera_status.config(text='get ready',bootstyle='success-outline')
                         # 清除垃圾存在标志
-                        self.waste_exist_flag = False
+                        self.erase_ready = True
                         self.label_order.config(text='---',bootstyle='warning')
                         self.label_class.config(text=self.wastes_cls[0],bootstyle='warning')
                         self.label_status.config(text='---',bootstyle='warning')
