@@ -590,6 +590,7 @@ class GUI:
                         self.blank_count += 1
                         
             if self.blank_count > 5:
+                self.erase_ready = False
                 self.waste_exist_flag = False
                 self.blank_count = 0
                 
