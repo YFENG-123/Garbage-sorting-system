@@ -19,6 +19,11 @@ def track_init():
     GPIO.setup(INT3, GPIO.OUT)
     GPIO.setup(INT4, GPIO.OUT)
 
+def track_back():
+    GPIO.output(INT1,GPIO.LOW)
+    GPIO.output(INT2,GPIO.HIGH)
+    GPIO.output(INT3, GPIO.LOW)
+    GPIO.output(INT4, GPIO.HIGH)
 def track_start():
     GPIO.output(INT1,GPIO.HIGH)
     GPIO.output(INT2,GPIO.LOW)

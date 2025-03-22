@@ -11,7 +11,7 @@ from PIL import Image, ImageTk  # 图像控件
 Image.CUBIC = Image.BICUBIC # 显式修复ttk包bug
 
 from gimbal_pigpio import gimbal_init,gimbal_work,gimbal_reset,gimbal_deinit
-from GPIO_Track import track_init,track_start,track_stop
+from GPIO_Track import track_init,track_start,track_stop,track_back
 from pigpio_Compressor import compressor_init,start_compress,stop_compress,reset_compress,UltrasonicSensor
 
 import pi_system
@@ -72,8 +72,12 @@ class GUI:
     last_time_stamp = 0.0
     FPS = 0
 
+
+
     # 初始化
     def __init__(self):
+        #正反转计数
+        self.count = 0
 
         #载入模型
         
@@ -616,7 +620,13 @@ class GUI:
                     self.label_other_waste.configure(text= self.waste_count[2])
                     self.label_recyclable_waste.configure(text= self.waste_count[3])
             else:
-                track_start()
+                self.count = self.count + 1
+                if self.count > 5:
+                    track_start()
+                if self.count <= 5:
+                    track_back()
+                if self.count == 10:
+                    self.count = 0
             self.waste_exist_frame = 0
             self.total_probs = {k: 0 for k in self.total_probs} #重置字典
             print(results[0].probs.top1)
@@ -660,7 +670,13 @@ class GUI:
                     
                         # 传送带重新工作
                         self.button_conveyor_status.config(text='working',bootstyle='success-outline')
-                        track_start()
+                        self.count = self.count + 1
+                        if self.count > 5:
+                            track_start()
+                        if self.count <= 5:
+                            track_back()
+                        if self.count == 10:
+                            self.count = 0
                         # 系统切换到等待检测状态
                         self.system_status = 0
 
