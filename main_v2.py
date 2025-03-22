@@ -76,12 +76,13 @@ class GUI:
 
     # 初始化
     def __init__(self):
-
+        #正反转计数
+        self.count = 0
         #载入模型
         
         print("载入模型...")
 
-        self.cls_ncnn_model = YOLO("model/wasteCls_v4_3_ncnn_model",task='classify')
+        self.cls_ncnn_model = YOLO("model/wasteCls_v4_8_ncnn_model",task='classify')
 
         print("模型载入完毕")
 
@@ -498,7 +499,7 @@ class GUI:
         self.progressbar_disk.configure(value = DISK_perc)
         self.label_memory.configure(text= RAM_perc)
         self.label_disk.configure(text= DISK_perc)
-    #定时刷新
+     #定时刷新
     def update_frame(self):
 
         time_start = time.time()
@@ -528,7 +529,6 @@ class GUI:
         start_x = (width - min_dim) // 2  # 计算裁剪区域的起始 x 坐标
         start_y = (height - min_dim) // 2  # 计算裁剪区域的起始 y 坐标
         cropped_frame = camframe[start_y:start_y + min_dim, start_x:start_x + min_dim]  # 裁剪为中心正方形
-        # resized_frame = cv2.resize(cropped_frame, (1080, 1080), interpolation=cv2.INTER_LANCZOS4)  # 缩放为 1080x1080
 
         # 运行模型
         results = self.cls_ncnn_model.predict(
@@ -538,6 +538,7 @@ class GUI:
             conf=0.25
         )  # 模型推理(预测)
 
+        
 
         self.compressor_work()
         self.get_sensor_info()
@@ -585,8 +586,7 @@ class GUI:
                         # 将概率累加到对应的类别中
                         for class_id, prob in zip(top5_classes, top5_probs):
                             self.total_probs[class_id] += prob.item()  # 将张量转换为 Python 标量并累加
-            
-            
+                    
                 
             if self.waste_exist_frame >= self.waste_exist_frame_max :
 
@@ -608,9 +608,6 @@ class GUI:
                     # 置信率
                     conf_value = round(results[0].probs.top1conf.item() * 100,1)
                     self.meter_conf.configure(amountused = conf_value) 
-                    # 更新历史信息
-                    self.tableview_history.insert_row(0,(self.waste_total,self.wastes_cls[results[0].probs.top1],1,'OK!'))
-                    self.tableview_history.load_table_data()
                     # 更新统计条
                     self.waste_count[results[0].probs.top1-1] += 1
                     self.progressbar_food_waste.configure(value=int(self.waste_count[0]/self.waste_total*100))
@@ -621,12 +618,21 @@ class GUI:
                     self.label_hazardous_waste.configure(text= self.waste_count[1])
                     self.label_other_waste.configure(text= self.waste_count[2])
                     self.label_recyclable_waste.configure(text= self.waste_count[3])
+                    # 更新历史信息
+                    self.tableview_history.insert_row(0,(self.waste_total,self.wastes_cls[results[0].probs.top1],self.waste_count[results[0].probs.top1],'OK!'))
+                    self.tableview_history.load_table_data()
             else:
-                track_start()
+                self.count = self.count + 1
+                if self.count > 5:
+                    track_start()
+                if self.count <= 5:
+                    track_stop()
+                if self.count == 10:
+                    self.count = 0
             self.waste_exist_frame = 0
             self.total_probs = {k: 0 for k in self.total_probs} #重置字典
             print(results[0].probs.top1)
-            
+                    
             if self.waste_exist_flag:
                 # 垃圾存在
                     # 传送带停止工作
@@ -653,7 +659,7 @@ class GUI:
                     t1 = time.time()
                     gimbal_reset()
                     print("time_reset:",time.time() - t1) 
-                    if time.time() - self.duoji_start_time >= 1.0 :
+                    if time.time() - self.duoji_start_time >= 1.5 :
                         # 舵机就位，垃圾倾倒完毕
                         self.button_camera_status.config(text='get ready',bootstyle='success-outline')
                         # 清除垃圾存在标志
@@ -666,7 +672,13 @@ class GUI:
                     
                         # 传送带重新工作
                         self.button_conveyor_status.config(text='working',bootstyle='success-outline')
-                        track_start()
+                        self.count = self.count + 1
+                        if self.count > 5:
+                            track_start()
+                        if self.count <= 5:
+                            track_stop()
+                        if self.count == 10:
+                            self.count = 0
                         # 系统切换到等待检测状态
                         self.system_status = 0
 
