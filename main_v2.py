@@ -608,9 +608,6 @@ class GUI:
                     # 置信率
                     conf_value = round(results[0].probs.top1conf.item() * 100,1)
                     self.meter_conf.configure(amountused = conf_value) 
-                    # 更新历史信息
-                    self.tableview_history.insert_row(0,(self.waste_total,self.wastes_cls[results[0].probs.top1],self.waste_count[results[0].probs.top1],'OK!'))
-                    self.tableview_history.load_table_data()
                     # 更新统计条
                     self.waste_count[results[0].probs.top1-1] += 1
                     self.progressbar_food_waste.configure(value=int(self.waste_count[0]/self.waste_total*100))
@@ -621,6 +618,9 @@ class GUI:
                     self.label_hazardous_waste.configure(text= self.waste_count[1])
                     self.label_other_waste.configure(text= self.waste_count[2])
                     self.label_recyclable_waste.configure(text= self.waste_count[3])
+                    # 更新历史信息
+                    self.tableview_history.insert_row(0,(self.waste_total,self.wastes_cls[results[0].probs.top1],self.waste_count[results[0].probs.top1],'OK!'))
+                    self.tableview_history.load_table_data()
             else:
                 self.count = self.count + 1
                 if self.count > 5:
