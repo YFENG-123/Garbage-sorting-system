@@ -578,6 +578,7 @@ class GUI:
                     )  # 模型推理(预测)
                     if results[0].probs.top1 != 0 :
                         self.waste_exist_frame += 1
+                        self.blank_count = 0
 
                         # 获取前五类别的序号和概率分布
                         top5_classes = results[0].probs.top5  # 前五类别的序号
