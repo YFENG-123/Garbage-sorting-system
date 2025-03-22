@@ -3,7 +3,7 @@ import time
 import os
 import random
 from PIL import Image
-from gimbal_pigpio import gimbal_init, gimbal_work, gimbal_reset, gimbal_deinit
+from gimbal_pigpio_v3 import gimbal_init, gimbal_work, gimbal_reset, gimbal_deinit
 
 from datetime import datetime  # 导入 datetime 模块
 
@@ -17,11 +17,11 @@ if not os.path.exists(save_folder):
     os.makedirs(save_folder)
 
 # 设置拍摄频率（秒）
-capture_interval = 0.16  
+capture_interval = 0.2 
 
 # 设置舵机运动的随机时间范围（秒）
-min_random_time = 0.4  # 最小随机时间
-max_random_time = 0.9  # 最大随机时间
+min_random_time = 0.3  # 最小随机时间
+max_random_time = 0.6  # 最大随机时间
 
 
 # 舵机运动方向控制

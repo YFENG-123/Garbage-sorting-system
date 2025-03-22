@@ -40,12 +40,12 @@ class GUI:
 
     # 垃圾识别判断
     waste_exist_frame = 0 # 垃圾识别帧
-    waste_exist_frame_max = 4 # 垃圾识别帧阈值
+    waste_exist_frame_max = 5 # 垃圾识别帧阈值
     waste_exist_flag = False # 垃圾识别结果
     waste_total = 0 # 垃圾总数
     # 初始化一个字典来存储每个类别的概率总和
     total_probs = {i: 0.0 for i in range(5)}  # 假设类别编号为 0 到 4
-    conf_threshold = 0.85 # 置信阈值
+    conf_threshold = 0.55 # 置信阈值
 
     # 舵机运行方向
     duoji_start_time = 0
@@ -55,7 +55,7 @@ class GUI:
     safe_dis = [6.0,20.0]  # 设置一个安全距离（单位：cm）  
     time_to_run = 3  # 压缩和复位持续的时间（秒）
     compressor_t1 = 0 # 压缩开始时间
-    window_size = 10 # 均值滤波窗口大小
+    window_size = 20 # 均值滤波窗口大小
 
     #摄像头图片参数
     image_multiple = 40
@@ -66,7 +66,7 @@ class GUI:
     static_image_container = None
     
     #帧时间戳
-    num_frames = 90
+    num_frames = 140
     frames_count = 0
     time_stamp = 0.0
     last_time_stamp = 0.0
@@ -79,7 +79,7 @@ class GUI:
         
         print("载入模型...")
 
-        self.cls_ncnn_model = YOLO("model/wasteCls_v3_ncnn_model",task='classify')
+        self.cls_ncnn_model = YOLO("model/wasteCls_v4_6_ncnn_model",task='classify')
 
         print("模型载入完毕")
 
@@ -106,9 +106,9 @@ class GUI:
         
         # 初始化超声波传感器
         self.sensor_rw = UltrasonicSensor(trig_pin=19, echo_pin=26)
-        self.sensor_fw = UltrasonicSensor(trig_pin=4, echo_pin=25)
+        self.sensor_ow = UltrasonicSensor(trig_pin=4, echo_pin=25)
         self.sensor_hw = UltrasonicSensor(trig_pin=5, echo_pin=6)
-        self.sensor_ow = UltrasonicSensor(trig_pin=20, echo_pin=21)
+        self.sensor_fw = UltrasonicSensor(trig_pin=20, echo_pin=21)
         track_start()
         print("GPIO启动成功")
         
@@ -441,9 +441,9 @@ class GUI:
                 self.compressor_t1 = time.time()
                 start_compress()
                 self.meanFilter_rw.clear_window() # 清空滤波器
-                self.button_detector_status.config(text=f"{filtered_dis:.2f} cm",bootstyle='danger')
+                self.button_recyclable_waste_status.config(text=f"{filtered_dis:.2f} FULL!!!",bootstyle='danger')
             else:
-                self.button_detector_status.config(text=f"{filtered_dis:.2f} cm",bootstyle='success')
+                self.button_recyclable_waste_status.config(text=f"{filtered_dis:.2f} OK",bootstyle='success-outline')
         
         else:
             if time.time() - self.compressor_t1 >= 2 * self.time_to_run + 0.5:
@@ -465,9 +465,9 @@ class GUI:
             barrier_dis = sensor.get_distance()          # 获取传感器数据
             filtered_dis = mean_filter.update(barrier_dis)  # 存储滤波结果
             if filtered_dis < self.safe_dis[0] or filtered_dis > self.safe_dis[1]: 
-                status.config(text=f"{filtered_dis:.2f} cm",bootstyle='danger')
+                status.config(text=f"{filtered_dis:.2f} FULL!!!",bootstyle='danger')
             else: 
-                status.config(text=f"{filtered_dis:.2f} cm",bootstyle='success-outline')
+                status.config(text=f"{filtered_dis:.2f} OK",bootstyle='success-outline')
     def get_pi_system_info(self):
         # CPU informatiom
         CPU_temp = pi_system.getCPUtemperature()
@@ -487,8 +487,8 @@ class GUI:
         DISK_perc = float(DISK_perc)
 
         # Update info
-        self.meter_cpu.configure(amountused = CPU_usage)
-        self.meter_temp.configure(amountused = CPU_temp)
+        self.meter_cpu.configure(amountused = float(CPU_usage))
+        self.meter_temp.configure(amountused = float(CPU_temp))
         self.progressbar_memory.configure(value = RAM_perc)
         self.progressbar_disk.configure(value = DISK_perc)
         self.label_memory.configure(text= RAM_perc)
