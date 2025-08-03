@@ -7,6 +7,7 @@ cup
 tomato_pepper
 yaodai
 stone
+model/
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
