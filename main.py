@@ -17,6 +17,7 @@ from pigpio_Compressor import compressor_init,start_compress,stop_compress,reset
 import pi_system
 from count_time import get_elapsed_time
 from meanfilter import MeanFilter
+from imglist import *
 
 class GUI:
     
@@ -45,7 +46,7 @@ class GUI:
     waste_total = 0 # 垃圾总数
     # 初始化一个字典来存储每个类别的概率总和
     total_probs = {i: 0.0 for i in range(5)}  # 假设类别编号为 0 到 4
-    conf_threshold = 0.55 # 置信阈值
+    conf_threshold = 0.70 # 置信阈值
 
     # 舵机运行方向
     duoji_start_time = 0
@@ -83,7 +84,7 @@ class GUI:
         
         print("载入模型...")
 
-        self.cls_ncnn_model = YOLO("model/wasteCls_v4_8_ncnn_model",task='classify')
+        self.cls_ncnn_model = YOLO("model/wasteCls_v4_9_ncnn_model",task='classify')
 
         print("模型载入完毕")
 
@@ -137,6 +138,16 @@ class GUI:
         self.image_recyclable_waste = ImageTk.PhotoImage(Image.open("gui_images/recyclable_waste_logo.png").resize((self.waste_logo_size,self.waste_logo_size)))
         self.image_other_waste = ImageTk.PhotoImage(Image.open("gui_images/other_waste_logo.png").resize((self.waste_logo_size,self.waste_logo_size)))
         self.image_hazardous_waste = ImageTk.PhotoImage(Image.open("gui_images/hazardous_waste_logo.png").resize((self.waste_logo_size,self.waste_logo_size)))
+        self.image_rec = ImageTk.PhotoImage(Image.open("gui_images/rec.png").resize((64,21)))
+        self.image_kit = ImageTk.PhotoImage(Image.open("gui_images/kit.png").resize((64,21)))
+        self.image_oth = ImageTk.PhotoImage(Image.open("gui_images/oth.png").resize((64,21)))
+        self.image_haz = ImageTk.PhotoImage(Image.open("gui_images/haz.png").resize((64,21)))
+        self.image_right = ImageTk.PhotoImage(Image.open("gui_images/right.png").resize((64,21)))
+        self.image_order = ImageTk.PhotoImage(Image.open("gui_images/order.png").resize((64,21)))
+        self.image_class = ImageTk.PhotoImage(Image.open("gui_images/class.png").resize((64,21)))
+        self.image_num = ImageTk.PhotoImage(Image.open("gui_images/num.png").resize((64,21)))
+        self.image_status = ImageTk.PhotoImage(Image.open("gui_images/status.png").resize((64,21)))
+        self.wastes_cls_img = ['None',self.image_kit,self.image_haz,self.image_oth,self.image_rec]
         self.wastes_cls = ['None','Food Waste','Hazardous Waste','Other Waste','Recyclable Waste']
         self.waste_count = [0,0,0,0]
 
@@ -161,38 +172,21 @@ class GUI:
         self.labelframe_history.grid(row=0, column=0,rowspan=1,padx=1,pady=1,ipadx=2,ipady=2)
 
         # 列表框
-        colors = self.root.style.colors
-
-        coldata = [
-            {"text": "Order", "stretch": False,"width": self.tableview_column_width},
-            {"text": "Class", "stretch": False,"width": self.tableview_column_width},
-            {"text": "Num", "stretch": False,"width": self.tableview_column_width},
-            {"text": "Status", "stretch": False,"width": self.tableview_column_width}
-            
+        headers = [
+        "gui_images/order.png",
+        "gui_images/class.png",
+        "gui_images/num.png",
+        "gui_images/status.png"
         ]
 
-        rowdata = [
-
-        ]
-        self.tableview_history = Tableview(
-            master=self.labelframe_history,
-            coldata=coldata,
-            rowdata=rowdata,
-            paginated=False,
-            searchable=False,
-            bootstyle=INFO,
-            stripecolor=(colors.success, None),
-            height=self.tableview_items_num,
-            pagesize=self.tableview_items_num,
-        )
-        self.tableview_history.grid()
-        self.tableview_history.configure(style='custom.primary.Treeview')  # 应用自定义样式
+        self.img_list = ImageList(self.labelframe_history,headers)
+        self.img_list.grid()
     
     # 投放统计框
     def create_total_frame(self):
         
         # 标签框
-        self.labelframe_total = ttk.Labelframe(self.root, text="Garbage Disposal Statistics")
+        self.labelframe_total = ttk.Labelframe(self.root, text="中文测试")
         self.labelframe_total.grid(row=1, column=1,rowspan=1,padx=1,pady=1,ipadx=2,ipady=2,sticky='news')
 
         # 各类垃圾标签框
@@ -253,7 +247,8 @@ class GUI:
         self.sensor_filter_status_pairs = [
             (self.sensor_fw, self.meanFilter_fw,self.button_food_waste_status),
             (self.sensor_hw, self.meanFilter_hw,self.button_hazardous_waste_status),
-            (self.sensor_ow, self.meanFilter_ow,self.button_other_waste_status)
+            (self.sensor_ow, self.meanFilter_ow,self.button_other_waste_status),
+            (self.sensor_rw, self.meanFilter_rw,self.button_recyclable_waste_status)
         ]
     
     # 视频框
@@ -300,13 +295,13 @@ class GUI:
         self.meter_conf.grid(row=1, column=4,sticky='news')
 
         # 分类信息标签
-        self.label_order = ttk.Label(self.labelframe_video,text='array',font=('Arial', 30),bootstyle="success")
+        self.label_order = ttk.Label(self.labelframe_video,image=self.image_order,font=('Arial', 30),bootstyle="success")
         self.label_order.grid(row=2, column=0,padx=5,pady=5,ipadx=2,ipady=2,sticky='news')
-        self.label_class = ttk.Label(self.labelframe_video,text='classify',font=('Arial', 30),bootstyle="success")
+        self.label_class = ttk.Label(self.labelframe_video,image=self.image_class,font=('Arial', 30),bootstyle="success")
         self.label_class.grid(row=2, column=1,padx=5,pady=5,ipadx=2,ipady=2,sticky='news')
-        self.label_num = ttk.Label(self.labelframe_video,text='number',font=('Arial', 30),bootstyle="success")
+        self.label_num = ttk.Label(self.labelframe_video,image=self.image_num,font=('Arial', 30),bootstyle="success")
         self.label_num.grid(row=2, column=2,padx=5,pady=5,ipadx=2,ipady=2,sticky='news')
-        self.label_status = ttk.Label(self.labelframe_video,text='OK!',font=('Arial', 30),bootstyle="success")
+        self.label_status = ttk.Label(self.labelframe_video,image=self.image_status,bootstyle="success")
         self.label_status.grid(row=2, column=3,padx=5,pady=5,ipadx=2,ipady=2,sticky='news')
 
 
@@ -538,7 +533,7 @@ class GUI:
 
         
 
-        self.compressor_work()
+        # self.compressor_work()
         self.get_sensor_info()
 
         if self.system_status == 0 and self.compressor_work_status == 0:
@@ -599,10 +594,10 @@ class GUI:
                     self.waste_exist_flag = True  
                     self.waste_total += 1        
                     # 投放信息
-                    self.label_order.config(text=str(self.waste_total),bootstyle='success') 
-                    self.label_class.config(text=self.wastes_cls[results[0].probs.top1],bootstyle='success')
-                    self.label_num.config(text='1',bootstyle='success')
-                    self.label_status.config(text='OK!',bootstyle='success')
+                    self.label_order.config(text=str(self.waste_total),image='',bootstyle='success') 
+                    self.label_class.config(image=self.wastes_cls_img[results[0].probs.top1],bootstyle='success')
+                    self.label_num.config(text='1',image='',bootstyle='success')
+                    self.label_status.config(image=self.image_right,bootstyle='success')
                     # 置信率
                     conf_value = round(results[0].probs.top1conf.item() * 100,1)
                     self.meter_conf.configure(amountused = conf_value) 
@@ -617,13 +612,14 @@ class GUI:
                     self.label_other_waste.configure(text= self.waste_count[2])
                     self.label_recyclable_waste.configure(text= self.waste_count[3])
                     # 更新历史信息
-                    self.tableview_history.insert_row(0,(self.waste_total,self.wastes_cls[results[0].probs.top1],self.waste_count[results[0].probs.top1],'OK!'))
-                    self.tableview_history.load_table_data()
+                    # self.tableview_history.insert_row(0,(self.waste_total,self.wastes_cls[results[0].probs.top1],self.waste_count[results[0].probs.top1-1],'Sort Finish!'))
+                    # self.tableview_history.load_table_data()
+                    self.img_list.add_item(self.waste_total,self.wastes_cls_img[results[0].probs.top1],self.waste_count[results[0].probs.top1-1], self.image_right)
             else:
                 self.count = self.count + 1
-                if self.count > 5:
+                if self.count > 3:
                     track_start()
-                if self.count <= 5:
+                if self.count <= 3:
                     track_stop()
                 if self.count == 10:
                     self.count = 0
@@ -662,18 +658,18 @@ class GUI:
                         self.button_camera_status.config(text='get ready',bootstyle='success-outline')
                         # 清除垃圾存在标志
                         self.waste_exist_flag = False
-                        self.label_order.config(text='---',bootstyle='warning')
-                        self.label_class.config(text=self.wastes_cls[0],bootstyle='warning')
-                        self.label_status.config(text='---',bootstyle='warning')
-                        self.label_num.config(text='---',bootstyle='warning')
+                        self.label_order.config(text='---',image='',bootstyle='warning')
+                        self.label_class.config(text='---',image='',bootstyle='warning')
+                        self.label_status.config(text='---',image='',bootstyle='warning')
+                        self.label_num.config(text='---',image='',bootstyle='warning')
                         
                     
                         # 传送带重新工作
                         self.button_conveyor_status.config(text='working',bootstyle='success-outline')
                         self.count = self.count + 1
-                        if self.count > 5:
+                        if self.count > 3:
                             track_start()
-                        if self.count <= 5:
+                        if self.count <= 3:
                             track_stop()
                         if self.count == 10:
                             self.count = 0
@@ -692,6 +688,7 @@ class GUI:
             self.frames_count = 1
             self.meter_fps.configure(amountused=self.FPS)  
             self.get_pi_system_info()  
+            
         else :
             self.frames_count += 1
     
@@ -728,6 +725,7 @@ class GUI:
     def shutdown(self):
         self.camera.release() # 释放摄像头
         self.video.release() # 释放视频
+        gimbal_reset()
         gimbal_deinit() # 释放舵机
         track_stop() # 停止传送带
         self.root.destroy() # 销毁窗口

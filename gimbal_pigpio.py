@@ -32,22 +32,22 @@ def gimbal_work(cls):
 
     if cls == 0:  # 前倾动作
         print("前倾")
-        set_angle(SERVO2_PIN, 75)  # 舵机2向前下压
+        set_angle(SERVO2_PIN, 65)  # 舵机2向前下压
         
     elif cls == 1:  # 后倾动作
         print("后倾")
-        set_angle(SERVO2_PIN, 255)  # 舵机2向后仰
+        set_angle(SERVO2_PIN, 265)  # 舵机2向后仰
 
     elif cls == 2:  # 左倾动作
         print("左倾")
         set_angle(SERVO1_PIN, 255)
-        set_angle(SERVO2_PIN, 75)
+        set_angle(SERVO2_PIN, 65)
         
     elif cls == 3:  # 右倾动作
         print("右倾")
         # 舵机1右转90度（不低于0°限制）
         set_angle(SERVO1_PIN, 75)
-        set_angle(SERVO2_PIN, 75)
+        set_angle(SERVO2_PIN, 65)
 
 def gimbal_reset():
     print("复位到中立位置")
