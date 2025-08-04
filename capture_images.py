@@ -21,8 +21,9 @@ capture_interval = 0.2
 
 # 设置舵机运动的随机时间范围（秒）
 min_random_time = 0.3  # 最小随机时间
-max_random_time = 0.6  # 最大随机时间
-
+max_random_time = 0.7  # 最大随机时间
+count = 0
+total = 100
 
 # 舵机运动方向控制
 gimbal_status = 0
@@ -55,7 +56,7 @@ def capture_and_save_image():
     timestamp = now.strftime("%Y%m%d_%H%M%S_%f")[:-3]  # %f 是微秒，取前3位表示毫秒
     image_path = os.path.join(save_folder, f"{timestamp}.jpg")
     cv2.imwrite(image_path, cropped_frame)
-    print(f"Image saved: {image_path}")
+    # print(f"Image saved: {image_path}")
 
 def control_gimbal():
 
@@ -68,24 +69,29 @@ def control_gimbal():
         # 控制舵机运动
         gimbal_work(int(gimbal_status/2))  # 假设舵机运动模式为1
 
-    print("Gimbal movement completed")
+    # print("Gimbal movement completed")
 
 try:
     last_gimbal_time = time.time()  # 记录上次舵机运动的时间
     next_gimbal_time = round(random.uniform(min_random_time, max_random_time), 2)  # 生成下次舵机运动的随机时间
 
     while True:
+
         current_time = time.time()
 
         # 捕获并保存图像
         capture_and_save_image()
+        count += 1
+        print(count)
+        if count >= total:
+            break
 
         # 检查是否到达随机时间，控制舵机运动
         if current_time - last_gimbal_time >= next_gimbal_time:
             control_gimbal()
             last_gimbal_time = current_time  # 更新上次舵机运动的时间
             next_gimbal_time = round(random.uniform(min_random_time, max_random_time), 2)  # 生成新的随机时间
-            print(f"Next gimbal movement in {next_gimbal_time} seconds")
+            # print(f"Next gimbal movement in {next_gimbal_time} seconds")
 
         # 等待拍摄间隔
         time.sleep(capture_interval)

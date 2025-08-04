@@ -24,14 +24,19 @@ def track_back():
     GPIO.output(INT2,GPIO.HIGH)
     GPIO.output(INT3, GPIO.LOW)
     GPIO.output(INT4, GPIO.HIGH)
-def track_start():
+    
+def track_start_1():
     GPIO.output(INT1,GPIO.HIGH)
     GPIO.output(INT2,GPIO.LOW)
+
+def track_start_2():
     GPIO.output(INT3, GPIO.HIGH)
     GPIO.output(INT4, GPIO.LOW)
 
-def track_stop():
+def track_stop_1():
     GPIO.output(INT1,GPIO.LOW)
     GPIO.output(INT2,GPIO.LOW)
+
+def track_stop_2():
     GPIO.output(INT3, GPIO.LOW)
     GPIO.output(INT4, GPIO.LOW)

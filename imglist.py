@@ -15,7 +15,7 @@ class ImageList(tk.Frame):
             min_height: 组件最小高度
         """
         super().__init__(parent)
-        self.column_widths = column_widths or [64, 64, 64, 64]  # 默认列宽
+        self.column_widths = column_widths or [80, 80, 80, 80, 80]  # 默认列宽
         self.row_height = row_height  # 每行高度
         self.min_width = min_width
         self.min_height = min_height
@@ -63,11 +63,11 @@ class ImageList(tk.Frame):
             raise ValueError("表头必须包含4张图片路径")
         
         # 配置表头布局权重
-        for col in range(4):
+        for col in range(5):
             self.header_frame.grid_columnconfigure(
                 col, 
                 weight=1, 
-                minsize=self.column_widths[col]  # 设置最小列宽
+                minsize=self.column_widths[col] *0.8 # 设置最小列宽
             )
         
         # 加载并添加四列图片
@@ -76,12 +76,12 @@ class ImageList(tk.Frame):
                 pil_img = Image.open(path)
                 # 调整图片大小为列宽的一半和高度的70%，保持比例
                 height = int(self.row_height)
-                pil_img.thumbnail((self.column_widths[col] , height))
+                pil_img.thumbnail((self.column_widths[col]*0.8, height))
                 tk_img = ImageTk.PhotoImage(pil_img)
                 label = tk.Label(
                     self.header_frame, 
                     image=tk_img, 
-                    width=self.column_widths[col],
+                    width=self.column_widths[col]*0.8,
                     height=self.row_height
                 )
                 label.image = tk_img  # 保持引用
@@ -95,7 +95,7 @@ class ImageList(tk.Frame):
                     width=self.column_widths[col],
                     height=self.row_height
                 ).grid(row=0, column=col, sticky="nsew")
-    
+           
     def on_frame_configure(self, event):
         """更新画布的滚动区域"""
         self.canvas.configure(scrollregion=self.canvas.bbox("all"))
@@ -132,7 +132,7 @@ class ImageList(tk.Frame):
             self.items[i] = (item, i + 1)
         
         # 将新项添加到列表顶部（第0行）
-        item_frame.grid(row=0, column=0, sticky="ew", padx=5, pady=2)
+        item_frame.grid(row=0, column=0, sticky="nsew", padx=5, pady=2)
         # 插入到列表开头
         self.items.insert(0, (item_frame, 0))
         
