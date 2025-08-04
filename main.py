@@ -11,7 +11,7 @@ from PIL import Image, ImageTk  # 图像控件
 Image.CUBIC = Image.BICUBIC # 显式修复ttk包bug
 
 from gimbal_pigpio import gimbal_init,gimbal_work,gimbal_reset,gimbal_deinit
-from GPIO_Track import track_init,track_start,track_stop
+from GPIO_Track import track_init,track_start_1,track_stop_1,track_start_2,track_stop_2
 from pigpio_Compressor import compressor_init,start_compress,stop_compress,reset_compress,UltrasonicSensor
 
 import pi_system
@@ -41,7 +41,7 @@ class GUI:
 
     # 垃圾识别判断
     waste_exist_frame = 0 # 垃圾识别帧
-    waste_exist_frame_max = 5 # 垃圾识别帧阈值
+    waste_exist_frame_max = 4 # 垃圾识别帧阈值
     waste_exist_flag = False # 垃圾识别结果
     waste_total = 0 # 垃圾总数
     # 初始化一个字典来存储每个类别的概率总和
@@ -50,6 +50,10 @@ class GUI:
 
     # 舵机运行方向
     duoji_start_time = 0
+
+    # 传送带
+    track_t1 = 0
+    track_t2 = 0
 
     # 压缩机构
     compressor_work_status = 0 # 压缩机构工作状态
@@ -84,7 +88,7 @@ class GUI:
         
         print("载入模型...")
 
-        self.cls_ncnn_model = YOLO("model/wasteCls_v4_9_ncnn_model",task='classify')
+        self.cls_ncnn_model = YOLO("model/wasteCls_v5_ncnn_model",task='classify')
 
         print("模型载入完毕")
 
@@ -114,7 +118,6 @@ class GUI:
         self.sensor_ow = UltrasonicSensor(trig_pin=4, echo_pin=25)
         self.sensor_hw = UltrasonicSensor(trig_pin=5, echo_pin=6)
         self.sensor_fw = UltrasonicSensor(trig_pin=20, echo_pin=21)
-        track_start()
         print("GPIO启动成功")
         
         # 创建窗口
@@ -128,7 +131,7 @@ class GUI:
 
         # 各类属性
         self.tableview_items_num = 12
-        self.progressbar_length = 335
+        self.progressbar_length = 300
         self.tableview_column_width = 115
         self.metersize = 175
         self.waste_logo_size = 30
@@ -186,7 +189,7 @@ class GUI:
     def create_total_frame(self):
         
         # 标签框
-        self.labelframe_total = ttk.Labelframe(self.root, text="中文测试")
+        self.labelframe_total = ttk.Labelframe(self.root)
         self.labelframe_total.grid(row=1, column=1,rowspan=1,padx=1,pady=1,ipadx=2,ipady=2,sticky='news')
 
         # 各类垃圾标签框
@@ -301,7 +304,7 @@ class GUI:
         self.label_class.grid(row=2, column=1,padx=5,pady=5,ipadx=2,ipady=2,sticky='news')
         self.label_num = ttk.Label(self.labelframe_video,image=self.image_num,font=('Arial', 30),bootstyle="success")
         self.label_num.grid(row=2, column=2,padx=5,pady=5,ipadx=2,ipady=2,sticky='news')
-        self.label_status = ttk.Label(self.labelframe_video,image=self.image_status,bootstyle="success")
+        self.label_status = ttk.Label(self.labelframe_video,image=self.image_status,font=('Arial', 30),bootstyle="success")
         self.label_status.grid(row=2, column=3,padx=5,pady=5,ipadx=2,ipady=2,sticky='news')
 
 
@@ -432,7 +435,8 @@ class GUI:
             if filtered_dis < self.safe_dis[0] or filtered_dis > self.safe_dis[1]:  
                 self.button_recyclable_waste_status.config(text='FULL!!!',bootstyle='danger-outline')
                 self.button_conveyor_status.config(text='stop',bootstyle='danger-outline')
-                track_stop() # 传送带停止
+                track_stop_1() # 传送带停止
+                track_stop_2()
                 self.button_camera_status.config(text='get ready',bootstyle='success-outline')
                 gimbal_reset() # 舵机复位
                 self.button_compressor_status.config(text='working',bootstyle='warning-outline')
@@ -451,7 +455,7 @@ class GUI:
                 self.button_compressor_status.config(text='get ready',bootstyle='success-outline')
                 self.button_recyclable_waste_status.config(text='OK',bootstyle='success-outline')
                 self.button_conveyor_status.config(text='working',bootstyle='success-outline')
-                track_start()
+                # track_start_1()
             elif time.time() - self.compressor_t1 >= self.time_to_run + 0.5:
                 reset_compress()
             elif time.time() - self.compressor_t1 >= self.time_to_run:
@@ -531,107 +535,111 @@ class GUI:
             conf=0.25
         )  # 模型推理(预测)
 
-        
-
         # self.compressor_work()
         self.get_sensor_info()
 
         if self.system_status == 0 and self.compressor_work_status == 0:
             # 系统处于等待检测状态
-            if results[0].probs.top1 != 0 and results[0].probs.top1conf >= self.conf_threshold-0.3:
-                self.waste_exist_frame += 1
-                if results[0].probs.top1conf >= self.conf_threshold:
-                    track_stop()
+            if self.waste_exist_flag==0:
+                if results[0].probs.top1 != 0 and results[0].probs.top1conf >= self.conf_threshold*0.80:
+                    self.waste_exist_frame += 1
+                    if results[0].probs.top1conf >= self.conf_threshold:
+                        track_stop_1()
+                        track_stop_2()
+                    # 获取前五类别的序号和概率分布
+                    top5_classes = results[0].probs.top5  # 前五类别的序号
+                    top5_probs = results[0].probs.top5conf  # 前五类别的概率
 
-                # 获取前五类别的序号和概率分布
-                top5_classes = results[0].probs.top5  # 前五类别的序号
-                top5_probs = results[0].probs.top5conf  # 前五类别的概率
+                    # 将概率累加到对应的类别中
+                    for class_id, prob in zip(top5_classes, top5_probs):
+                        self.total_probs[class_id] += prob.item()  # 将张量转换为 Python 标量并累加
 
-                # 将概率累加到对应的类别中
-                for class_id, prob in zip(top5_classes, top5_probs):
-                    self.total_probs[class_id] += prob.item()  # 将张量转换为 Python 标量并累加
+                    for i in range(self.waste_exist_frame_max-1):
+                        ret, camframe = self.camera.read()# cv读取摄像头
+                        camframe = cv2.flip(camframe, 1) # 反转图像
+                        # 将 camframe 修剪为 1080x1080，保持中心不变
+                        height, width = camframe.shape[:2]
+                        min_dim = min(height, width)  # 获取最小边长
+                        start_x = (width - min_dim) // 2  # 计算裁剪区域的起始 x 坐标
+                        start_y = (height - min_dim) // 2  # 计算裁剪区域的起始 y 坐标
+                        cropped_frame = camframe[start_y:start_y + min_dim, start_x:start_x + min_dim]  # 裁剪为中心正方形
 
-                for i in range(self.waste_exist_frame_max-1):
-                    ret, camframe = self.camera.read()# cv读取摄像头
-                    camframe = cv2.flip(camframe, 1) # 反转图像
-                    # 将 camframe 修剪为 1080x1080，保持中心不变
-                    height, width = camframe.shape[:2]
-                    min_dim = min(height, width)  # 获取最小边长
-                    start_x = (width - min_dim) // 2  # 计算裁剪区域的起始 x 坐标
-                    start_y = (height - min_dim) // 2  # 计算裁剪区域的起始 y 坐标
-                    cropped_frame = camframe[start_y:start_y + min_dim, start_x:start_x + min_dim]  # 裁剪为中心正方形
-                    # resized_frame = cv2.resize(cropped_frame, (1080, 1080), interpolation=cv2.INTER_LANCZOS4)  # 缩放为 1080x1080
+                        # 运行模型
+                        results = self.cls_ncnn_model.predict(
+                            source=cropped_frame,  # 使用修剪后的帧
+                            imgsz=224,
+                            device="cpu",
+                            conf=0.25
+                        )  # 模型推理(预测)
+                        if results[0].probs.top1 != 0 :
+                            self.waste_exist_frame += 1
 
-                    # 运行模型
-                    results = self.cls_ncnn_model.predict(
-                        source=cropped_frame,  # 使用修剪后的帧
-                        imgsz=224,
-                        device="cpu",
-                        conf=0.25
-                    )  # 模型推理(预测)
-                    if results[0].probs.top1 != 0 :
-                        self.waste_exist_frame += 1
+                            # 获取前五类别的序号和概率分布
+                            top5_classes = results[0].probs.top5  # 前五类别的序号
+                            top5_probs = results[0].probs.top5conf  # 前五类别的概率
 
-                        # 获取前五类别的序号和概率分布
-                        top5_classes = results[0].probs.top5  # 前五类别的序号
-                        top5_probs = results[0].probs.top5conf  # 前五类别的概率
-
-                        # 将概率累加到对应的类别中
-                        for class_id, prob in zip(top5_classes, top5_probs):
-                            self.total_probs[class_id] += prob.item()  # 将张量转换为 Python 标量并累加
+                            # 将概率累加到对应的类别中
+                            for class_id, prob in zip(top5_classes, top5_probs):
+                                self.total_probs[class_id] += prob.item()  # 将张量转换为 Python 标量并累加
+                        
                     
-                
-            if self.waste_exist_frame >= self.waste_exist_frame_max :
+                if self.waste_exist_frame >= self.waste_exist_frame_max :
 
-                # 计算每个类别的平均概率
-                avg_probs = {i: self.total_probs[i] / self.waste_exist_frame_max for i in range(5)} 
-                # 获取概率最大的类别
-                max_class = max(avg_probs.items(), key=lambda x: x[1])[0]
-                max_prob = avg_probs[max_class]
+                    # 计算每个类别的平均概率
+                    avg_probs = {i: self.total_probs[i] / self.waste_exist_frame_max for i in range(5)} 
+                    # 获取概率最大的类别
+                    max_class = max(avg_probs.items(), key=lambda x: x[1])[0]
+                    max_prob = avg_probs[max_class]
 
-                if max_class != 0 and max_prob >= self.conf_threshold:
-                    self.waste_exist_frame = 0
-                    self.waste_exist_flag = True  
-                    self.waste_total += 1        
-                    # 投放信息
-                    self.label_order.config(text=str(self.waste_total),image='',bootstyle='success') 
-                    self.label_class.config(image=self.wastes_cls_img[results[0].probs.top1],bootstyle='success')
-                    self.label_num.config(text='1',image='',bootstyle='success')
-                    self.label_status.config(image=self.image_right,bootstyle='success')
-                    # 置信率
-                    conf_value = round(results[0].probs.top1conf.item() * 100,1)
-                    self.meter_conf.configure(amountused = conf_value) 
-                    # 更新统计条
-                    self.waste_count[results[0].probs.top1-1] += 1
-                    self.progressbar_food_waste.configure(value=int(self.waste_count[0]/self.waste_total*100))
-                    self.progressbar_hazardous_waste.configure(value=int(self.waste_count[1]/self.waste_total*100))
-                    self.progressbar_other_waste.configure(value=int(self.waste_count[2]/self.waste_total*100))
-                    self.progressbar_recyclable_waste.configure(value=int(self.waste_count[3]/self.waste_total*100))
-                    self.label_food_waste.configure(text= self.waste_count[0])
-                    self.label_hazardous_waste.configure(text= self.waste_count[1])
-                    self.label_other_waste.configure(text= self.waste_count[2])
-                    self.label_recyclable_waste.configure(text= self.waste_count[3])
-                    # 更新历史信息
-                    # self.tableview_history.insert_row(0,(self.waste_total,self.wastes_cls[results[0].probs.top1],self.waste_count[results[0].probs.top1-1],'Sort Finish!'))
-                    # self.tableview_history.load_table_data()
-                    self.img_list.add_item(self.waste_total,self.wastes_cls_img[results[0].probs.top1],self.waste_count[results[0].probs.top1-1], self.image_right)
-            else:
-                self.count = self.count + 1
-                if self.count > 3:
-                    track_start()
-                if self.count <= 3:
-                    track_stop()
-                if self.count == 10:
-                    self.count = 0
-            self.waste_exist_frame = 0
-            self.total_probs = {k: 0 for k in self.total_probs} #重置字典
-            print(results[0].probs.top1)
+                    if max_class != 0 and max_prob >= self.conf_threshold:
+                        self.waste_exist_frame = 0
+                        self.waste_exist_flag = True  
+                        self.waste_total += 1        
+                        # 投放信息
+                        self.label_order.config(text=str(self.waste_total),image='',bootstyle='success') 
+                        self.label_class.config(image=self.wastes_cls_img[results[0].probs.top1],bootstyle='success')
+                        self.label_num.config(text='1',image='',bootstyle='success')
+                        self.label_status.config(image=self.image_right,bootstyle='success')
+                        # 置信率
+                        conf_value = round(results[0].probs.top1conf.item() * 100,1)
+                        self.meter_conf.configure(amountused = conf_value) 
+                        # 更新统计条
+                        self.waste_count[results[0].probs.top1-1] += 1
+                        self.progressbar_food_waste.configure(value=int(self.waste_count[0]/self.waste_total*100))
+                        self.progressbar_hazardous_waste.configure(value=int(self.waste_count[1]/self.waste_total*100))
+                        self.progressbar_other_waste.configure(value=int(self.waste_count[2]/self.waste_total*100))
+                        self.progressbar_recyclable_waste.configure(value=int(self.waste_count[3]/self.waste_total*100))
+                        self.label_food_waste.configure(text= self.waste_count[0])
+                        self.label_hazardous_waste.configure(text= self.waste_count[1])
+                        self.label_other_waste.configure(text= self.waste_count[2])
+                        self.label_recyclable_waste.configure(text= self.waste_count[3])
+                        # 更新历史信息
+                        # self.tableview_history.insert_row(0,(self.waste_total,self.wastes_cls[results[0].probs.top1],self.waste_count[results[0].probs.top1-1],'Sort Finish!'))
+                        # self.tableview_history.load_table_data()
+                        self.img_list.add_item(self.waste_total,self.wastes_cls_img[results[0].probs.top1],self.waste_count[results[0].probs.top1-1], self.image_right)
+                else:
+                    track_time= time.time()
+                    if track_time - self.track_t1 >= 0.3:
+                        track_start_1()
+                        if track_time - self.track_t1 >= 0.6:
+                            track_stop_1()
+                            self.track_t1 = track_time
+                    if track_time - self.track_t2 >= 0.2:
+                        track_stop_2()
+                        if track_time - self.track_t2 >= 0.6:
+                            track_start_2()
+                            self.track_t2 = track_time
+
+                self.waste_exist_frame = 0
+                self.total_probs = {k: 0 for k in self.total_probs} #重置字典
+                print(results[0].probs.top1)
                     
             if self.waste_exist_flag:
                 # 垃圾存在
-                    # 传送带停止工作
+                # 传送带停止工作
                 self.button_conveyor_status.config(text='stop',bootstyle='danger-outline')
-                track_stop()
+                track_stop_1()
+                track_stop_2()
                 # 舵机倾倒垃圾
                 self.button_camera_status.config(text='working',bootstyle='warning-outline')
                 t2 = time.time()
@@ -656,23 +664,40 @@ class GUI:
                     if time.time() - self.duoji_start_time >= 1.5 :
                         # 舵机就位，垃圾倾倒完毕
                         self.button_camera_status.config(text='get ready',bootstyle='success-outline')
-                        # 清除垃圾存在标志
-                        self.waste_exist_flag = False
-                        self.label_order.config(text='---',image='',bootstyle='warning')
-                        self.label_class.config(text='---',image='',bootstyle='warning')
-                        self.label_status.config(text='---',image='',bootstyle='warning')
-                        self.label_num.config(text='---',image='',bootstyle='warning')
-                        
-                    
-                        # 传送带重新工作
-                        self.button_conveyor_status.config(text='working',bootstyle='success-outline')
-                        self.count = self.count + 1
-                        if self.count > 3:
-                            track_start()
-                        if self.count <= 3:
-                            track_stop()
-                        if self.count == 10:
-                            self.count = 0
+
+                        ret, camframe = self.camera.read()# cv读取摄像头
+                        camframe = cv2.flip(camframe, 1) # 反转图像
+                        height, width = camframe.shape[:2]
+                        min_dim = min(height, width)  # 获取最小边长
+                        start_x = (width - min_dim) // 2  # 计算裁剪区域的起始 x 坐标
+                        start_y = (height - min_dim) // 2  # 计算裁剪区域的起始 y 坐标
+                        cropped_frame = camframe[start_y:start_y + min_dim, start_x:start_x + min_dim]  # 裁剪为中心正方形
+                         # 运行模型
+                        results = self.cls_ncnn_model.predict(
+                            source=cropped_frame,  # 使用修剪后的帧
+                            imgsz=224,
+                            device="cpu",
+                            conf=0.25
+                        )  # 模型推理(预测)
+
+                        if results[0].probs.top1 == 0 :
+
+                            # 清除垃圾存在标志
+                            self.waste_exist_flag = False
+                            self.label_order.config(text='---',image='',bootstyle='warning')
+                            self.label_class.config(text='---',image='',bootstyle='warning')
+                            self.label_status.config(text='---',image='',bootstyle='warning')
+                            self.label_num.config(text='---',image='',bootstyle='warning')
+                            
+                            # 传送带重新工作
+                            self.button_conveyor_status.config(text='working',bootstyle='success-outline')
+                            # self.count = self.count + 1
+                            # if self.count > 3:
+                            #     track_start()
+                            # if self.count <= 3:
+                            #     track_stop()
+                            # if self.count == 10:
+                            #     self.count = 0
                         # 系统切换到等待检测状态
                         self.system_status = 0
 
@@ -727,7 +752,8 @@ class GUI:
         self.video.release() # 释放视频
         gimbal_reset()
         gimbal_deinit() # 释放舵机
-        track_stop() # 停止传送带
+        track_stop_1() # 停止传送带
+        track_stop_2() 
         self.root.destroy() # 销毁窗口
         
     
