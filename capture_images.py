@@ -23,7 +23,7 @@ capture_interval = 0.2
 min_random_time = 0.3  # 最小随机时间
 max_random_time = 0.7  # 最大随机时间
 count = 0
-total = 100
+total = 200
 
 # 舵机运动方向控制
 gimbal_status = 0
