@@ -40,8 +40,8 @@ def gimbal_work(cls):
 
     elif cls == 2:  # 左倾动作
         print("左倾")
-        set_angle(SERVO1_PIN, 255)
-        set_angle(SERVO2_PIN, 155)
+        set_angle(SERVO1_PIN, 75)
+        set_angle(SERVO2_PIN, 185)
         
     elif cls == 3:  # 右倾动作
         print("右倾")

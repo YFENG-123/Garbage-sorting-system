@@ -9,6 +9,11 @@ yaodai
 stone
 model/
 add_0804/
+add_0805/
+captured_images/
+captured_images_v1/
+captured_images-2/
+captured_images-4/
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
